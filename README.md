@@ -9,7 +9,7 @@ Prefer working locally? You need Node.js and npm — [install with nvm](https://
 ```sh
 git clone <this-repository-url>
 cd <repository-name>
-npm ci
+npm i
 npm run dev
 ```
 
@@ -55,3 +55,52 @@ Everything works except the reviewer **research agent**, which is a server funct
 that calls an AI gateway with a secret key. A static host cannot run it, so the admin
 page shows a short note in its place. Reviewing, approving and publishing candidates
 are unaffected.
+
+## Android APK
+
+The Android app is the same web bundle wrapped in a Capacitor WebView — one codebase,
+no second implementation. The only difference from the Pages build is that it is rooted
+at `/` instead of `/<repo>/`, because inside the WebView the app is served from the root.
+
+### Getting an APK
+
+Every push to `main` runs the **Build Android APK** workflow, which uploads
+`we-the-future-debug-<sha>.apk` as a build artifact. Download it from the run's page
+under **Artifacts**, then install it on a device with USB debugging or by copying the
+file over and allowing installation from unknown sources.
+
+You can also trigger it by hand: **Actions → Build Android APK → Run workflow**.
+
+### Building locally
+
+Needs a JDK 21 and the Android SDK (`ANDROID_HOME` set):
+
+```sh
+npm run build:android          # builds the web bundle and syncs it into android/
+cd android && ./gradlew assembleDebug
+# app/build/outputs/apk/debug/app-debug.apk
+```
+
+`npm run build:android` must be re-run after any web change — the native project reads
+the bundle from `android/app/src/main/assets/`, which is gitignored and regenerated.
+
+### Signing a release build
+
+The workflow only produces a debug APK unless signing secrets are present, since an
+unsigned release APK cannot be installed. To get a signed release, add these repository
+secrets and the workflow picks them up automatically:
+
+| Secret                      | What it holds                        |
+| --------------------------- | ------------------------------------ |
+| `ANDROID_KEYSTORE_BASE64`   | your `.jks` keystore, base64-encoded |
+| `ANDROID_KEYSTORE_PASSWORD` | the keystore password                |
+| `ANDROID_KEY_ALIAS`         | the key alias inside the keystore    |
+| `ANDROID_KEY_PASSWORD`      | the password for that key            |
+
+### Known limits on Android
+
+- **Google sign-in** redirects through Supabase to `window.location.origin`, which inside
+  the WebView is the local Capacitor origin rather than a real website. Email sign-in
+  works; Google sign-in needs a deep-link redirect configured before it will round-trip.
+- **The reviewer research agent** is hidden, exactly as on Pages — it is a server
+  function and the APK ships no server.
