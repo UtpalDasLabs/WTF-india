@@ -1,4 +1,4 @@
-// The app is served from "/" on Lovable/Cloudflare and from "/<repo>/" on GitHub Pages.
+// The app is served from "/" by the server build and from "/<repo>/" on GitHub Pages.
 // Vite replaces import.meta.env.BASE_URL at build time; it always ends with a slash.
 export const BASE_PATH = import.meta.env.BASE_URL;
 

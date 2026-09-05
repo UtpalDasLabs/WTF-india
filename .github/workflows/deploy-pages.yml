@@ -25,18 +25,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      # bun.lock pins tarballs to Lovable's private registry mirror, which is not
-      # reachable from GitHub-hosted runners, so resolve from npm instead.
       - name: Install dependencies
-        run: npm install --no-package-lock --no-audit --no-fund --registry=https://registry.npmjs.org
+        run: npm ci
+
+      # enablement: true turns Pages on and sets its source to GitHub Actions, so a
+      # deploy cannot silently land next to a branch-based site that shadows it.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       # Reads GITHUB_REPOSITORY to derive the /<repo>/ base path. Supabase
       # credentials come from the committed .env; they are publishable keys.
       - name: Build static site
         run: npm run build:pages
-
-      - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:

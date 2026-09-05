@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { AppShell } from "@/components/wtf/app-shell";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { appOrigin } from "@/lib/base-path";
 
 export const Route = createFileRoute("/auth")({
@@ -67,16 +66,16 @@ function AuthPage() {
 
   const google = async () => {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: appOrigin(),
+    // Supabase redirects the browser to Google and back to redirectTo, so on success
+    // this call navigates away and nothing after it runs.
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: appOrigin() },
     });
-    if (result.error) {
+    if (error) {
       setBusy(false);
       toast.error("Google sign-in did not work. Please try email instead.");
-      return;
     }
-    if (result.redirected) return;
-    void navigate({ to: "/" });
   };
 
   if (session.userId) {

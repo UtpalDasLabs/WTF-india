@@ -70,17 +70,23 @@ export const runResearchAgent = createServerFn({ method: "POST" })
       throw new Error("Only reviewers can run the research agent.");
     }
 
-    const apiKey = process.env["LOVABLE_API_KEY"];
-    if (!apiKey) throw new Error("The research agent is not configured yet.");
+    // Any OpenAI-compatible chat-completions endpoint works here; point
+    // AI_GATEWAY_URL/AI_GATEWAY_API_KEY/AI_MODEL at the provider you use.
+    const apiKey = process.env["AI_GATEWAY_API_KEY"];
+    const gatewayUrl = process.env["AI_GATEWAY_URL"];
+    const model = process.env["AI_MODEL"];
+    if (!apiKey || !gatewayUrl || !model) {
+      throw new Error("The research agent is not configured yet.");
+    }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(gatewayUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.7-flash",
+        model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {
