@@ -38,10 +38,11 @@ is not the case.
 ### Publishing
 
 1. In the repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-   This matters: a site left on _Deploy from a branch_ serves Jekyll's render of the
-   repo — you get `README.md` as the home page — and ignores this workflow's output,
-   while the deploy still reports success. The workflow now forces the source back to
-   GitHub Actions on every run, but the first switch may need to be made by hand.
+   This matters, and it is the one step that cannot be automated: a site left on
+   _Deploy from a branch_ serves Jekyll's render of the repo — you get `README.md` as
+   the home page — and ignores this workflow's output, while the deploy still reports
+   success. Changing the source needs repo-admin rights, which a workflow's
+   `GITHUB_TOKEN` never has, so it has to be set once by hand.
 2. Push to `main`, or run the workflow manually from any branch via
    **Actions → Deploy to GitHub Pages → Run workflow**.
 
