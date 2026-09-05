@@ -127,6 +127,17 @@ export function CommunitySection({ projectId }: { projectId: string }) {
   const publicHasMine = existing
     ? visible.some((review) => review.id === existing.id)
     : false;
+  const conditionCounts = visible.reduce(
+    (acc, review) => {
+      if (review.condition) {
+        acc[review.condition] += 1;
+        acc.total += 1;
+      }
+      return acc;
+    },
+    { good: 0, mixed: 0, poor: 0, total: 0 },
+  );
+
   const average =
     visible.length > 0
       ? visible.reduce((sum, review) => sum + review.rating, 0) / visible.length
