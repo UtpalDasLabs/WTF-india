@@ -2,8 +2,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * We the Future brand mark.
- * A rounded civic badge: three rising bars (people and progress) under a
- * check-marked banner, so it reads as colourful but still credible.
+ * A rounded civic badge that literally spells WTF in three colours, drawn as
+ * thick rounded strokes so the letters stay readable at 24px in the header and
+ * as an app icon. The small tick keeps the "checked against records" promise.
  */
 export function WtfMark({
   className,
@@ -21,32 +22,38 @@ export function WtfMark({
     >
       <defs>
         <linearGradient id="wtf-badge" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#4C4ECF" />
-          <stop offset="55%" stopColor="#6A46D6" />
-          <stop offset="100%" stopColor="#2E2A8F" />
+          <stop offset="0%" stopColor="#2B2E8C" />
+          <stop offset="52%" stopColor="#4C4ECF" />
+          <stop offset="100%" stopColor="#7A3FD1" />
         </linearGradient>
       </defs>
 
-      <rect x="0" y="0" width="64" height="64" rx="18" fill="url(#wtf-badge)" />
+      <rect x="0" y="0" width="64" height="64" rx="17" fill="url(#wtf-badge)" />
 
-      {/* rising bars: three people standing together */}
-      <g>
-        <rect x="13" y="34" width="9" height="18" rx="4.5" fill="#3DD9A0" />
-        <circle cx="17.5" cy="29" r="4.6" fill="#3DD9A0" />
-
-        <rect x="27" y="27" width="10" height="25" rx="5" fill="#FFD166" />
-        <circle cx="32" cy="21.5" r="5.2" fill="#FFD166" />
-
-        <rect x="42" y="34" width="9" height="18" rx="4.5" fill="#FF7A5A" />
-        <circle cx="46.5" cy="29" r="4.6" fill="#FF7A5A" />
+      {/* WTF, drawn as strokes so it reads at icon size */}
+      <g
+        fill="none"
+        strokeWidth="4.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {/* W */}
+        <path d="M7 20.5 L12.4 39 L17.8 28.5 L23.2 39 L28.6 20.5" stroke="#3DD9A0" />
+        {/* T */}
+        <path d="M31.5 20.5 H45.5" stroke="#FFC93C" />
+        <path d="M38.5 20.5 V39" stroke="#FFC93C" />
+        {/* F */}
+        <path d="M50 39 V20.5 H60" stroke="#FF7A5A" />
+        <path d="M50 29.5 H57.5" stroke="#FF7A5A" />
       </g>
 
-      {/* verified tick on the tallest figure */}
-      <circle cx="46" cy="17" r="9.5" fill="#FFFFFF" />
+      {/* verified tick sitting on a bright civic bar */}
+      <rect x="7" y="46" width="34" height="5.6" rx="2.8" fill="#FFFFFF" opacity="0.9" />
+      <circle cx="51" cy="48.8" r="8.2" fill="#3DD9A0" />
       <path
-        d="M41.6 17.2l3.1 3.2 5.8-6.1"
+        d="M47.3 49l3 3 5-6"
         fill="none"
-        stroke="#2E2A8F"
+        stroke="#12275A"
         strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
