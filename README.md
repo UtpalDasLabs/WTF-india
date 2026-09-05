@@ -12,3 +12,38 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Deploy to GitHub Pages
+
+The app normally runs as a TanStack Start SSR app. GitHub Pages serves static files
+only, so the Pages build swaps SSR for TanStack Start's SPA mode: one prerendered
+shell (`index.html`) that boots the client router, with all data still fetched from
+Supabase directly in the browser.
+
+Build it locally:
+
+```sh
+npm run build:pages                # output in dist/client
+BASE_PATH=/ npm run build:pages    # for a custom domain or a <user>.github.io repo
+```
+
+The base path defaults to `/<repo>/` (derived from `GITHUB_REPOSITORY`), which is
+where a GitHub Pages project site is served from. Set `BASE_PATH` yourself when that
+is not the case.
+
+### Publishing
+
+1. In the repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. Push to `main`, or run the workflow manually from any branch via
+   **Actions → Deploy to GitHub Pages → Run workflow**.
+
+The workflow builds the site and publishes `dist/client`. Supabase credentials come
+from the committed `.env` — they are publishable (anon) keys, meant for a browser
+bundle; row-level security in Supabase is what protects the data.
+
+### What differs on Pages
+
+Everything works except the reviewer **research agent**, which is a server function
+that calls an AI gateway with a secret key. A static host cannot run it, so the admin
+page shows a short note in its place. Reviewing, approving and publishing candidates
+are unaffected.

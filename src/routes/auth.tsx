@@ -10,6 +10,7 @@ import { AppShell } from "@/components/wtf/app-shell";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { appOrigin } from "@/lib/base-path";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -47,7 +48,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: appOrigin() },
         });
         if (error) throw error;
         toast.success("Account created. You are signed in.");
@@ -67,7 +68,7 @@ function AuthPage() {
   const google = async () => {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: appOrigin(),
     });
     if (result.error) {
       setBusy(false);

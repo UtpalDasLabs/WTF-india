@@ -19,6 +19,7 @@ import { AppShell } from "@/components/wtf/app-shell";
 import { StatusChip, VerificationChip } from "@/components/wtf/status-chip";
 import { useSession } from "@/hooks/use-session";
 import { runResearchAgent } from "@/lib/agent.functions";
+import { IS_STATIC_DEPLOY } from "@/lib/base-path";
 import { MODERATION_STATE_LABEL } from "@/lib/moderation";
 import {
   candidatesQuery,
@@ -323,26 +324,36 @@ function AdminPage() {
               anything without an official source. Its findings arrive here as
               candidates, never as published facts.
             </p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={focus}
-                onChange={(event) => setFocus(event.target.value)}
-                placeholder="What should the agent look for?"
-                className="rounded-2xl bg-surface-container"
-              />
-              <Button
-                onClick={() => runAgent.mutate()}
-                disabled={runAgent.isPending}
-                className="rounded-full"
-              >
-                {runAgent.isPending ? "Researching…" : "Run agent"}
-              </Button>
-            </div>
+            {IS_STATIC_DEPLOY ? (
+              <p className="mt-3 rounded-2xl bg-surface-container p-3 text-sm text-muted-foreground">
+                The agent needs a server to call the AI gateway, so it cannot run on this static
+                build. Everything else on this page — reviewing, approving and publishing candidates
+                — works as usual.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={focus}
+                  onChange={(event) => setFocus(event.target.value)}
+                  placeholder="What should the agent look for?"
+                  className="rounded-2xl bg-surface-container"
+                />
+                <Button
+                  onClick={() => runAgent.mutate()}
+                  disabled={runAgent.isPending}
+                  className="rounded-full"
+                >
+                  {runAgent.isPending ? "Researching…" : "Run agent"}
+                </Button>
+              </div>
+            )}
           </div>
 
           {pendingCandidates.length === 0 ? (
             <p className="rounded-3xl bg-surface-container p-4 text-sm text-muted-foreground">
-              The queue is empty. Run the agent to look for new projects.
+              {IS_STATIC_DEPLOY
+                ? "The queue is empty."
+                : "The queue is empty. Run the agent to look for new projects."}
             </p>
           ) : null}
 
