@@ -298,6 +298,9 @@ function AdminPage() {
           <TabsTrigger value="projects" className="flex-1 rounded-full">
             Projects
           </TabsTrigger>
+          <TabsTrigger value="community" className="flex-1 rounded-full">
+            Public ({communityQueue.length})
+          </TabsTrigger>
           <TabsTrigger value="moderation" className="flex-1 rounded-full">
             Flagged
           </TabsTrigger>
@@ -395,6 +398,144 @@ function AdminPage() {
                   onClick={() => publishCandidate.mutate(candidate.id)}
                 >
                   <BadgeCheck className="mr-1.5 size-4" aria-hidden /> Verify and publish
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() =>
+                    setCandidateState.mutate({ id: candidate.id, state: "in_review" })
+                  }
+                >
+                  Mark in review
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="rounded-full"
+                  onClick={() =>
+                    setCandidateState.mutate({ id: candidate.id, state: "rejected" })
+                  }
+                >
+                  Reject
+                </Button>
+              </div>
+            </article>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="community" className="mt-4 space-y-3">
+          <p className="rounded-3xl bg-tertiary-container p-4 text-sm text-tertiary-container-foreground">
+            Sent in by members of the public, often about older work that records
+            already closed. Listing one shows it as community-reported and awaiting a
+            check — never as a verified government fact.
+          </p>
+
+          {communityQueue.length === 0 ? (
+            <p className="rounded-3xl bg-surface-container p-4 text-sm text-muted-foreground">
+              Nothing waiting from the public right now.
+            </p>
+          ) : null}
+
+          {communityQueue.map((candidate) => (
+            <article key={candidate.id} className="rounded-3xl bg-surface-container p-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-1 rounded-full bg-surface-container-highest px-2 py-0.5 font-medium">
+                  <Users className="size-3" aria-hidden />
+                  {candidate.review_state.replaceAll("_", " ")}
+                </span>
+                {candidate.moderation_state !== "visible" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-tertiary-container px-2 py-0.5 text-tertiary-container-foreground">
+                    <ShieldAlert className="size-3" aria-hidden />
+                    {MODERATION_STATE_LABEL[candidate.moderation_state]}
+                  </span>
+                ) : null}
+                <span className="text-muted-foreground">
+                  {candidate.is_anonymous
+                    ? "Anonymous in public"
+                    : (candidate.submitter_name ?? "Community member")}{" "}
+                  · {formatDate(candidate.created_at)}
+                </span>
+              </div>
+
+              <h2 className="mt-2 text-base font-semibold">{candidate.name}</h2>
+              <p className="text-xs text-muted-foreground">
+                {[candidate.category, candidate.location_text, candidate.district, candidate.state]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+
+              {candidate.plain_summary ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {candidate.plain_summary}
+                </p>
+              ) : null}
+
+              {candidate.observed_condition ? (
+                <div className="mt-2 rounded-2xl bg-surface-container-high p-3">
+                  <p className="label-sm text-muted-foreground">Condition reported</p>
+                  <p className="mt-1 text-sm">{candidate.observed_condition}</p>
+                </div>
+              ) : null}
+
+              <p className="mt-2 text-xs text-muted-foreground">
+                Said to be finished:{" "}
+                {candidate.completion_date
+                  ? formatDate(candidate.completion_date)
+                  : (candidate.approximate_date_note ?? "Not given")}
+              </p>
+
+              {candidate.citations.length > 0 ? (
+                <ul className="mt-2 space-y-2">
+                  {candidate.citations.map((citation, index) => (
+                    <li key={`${candidate.id}-c-${index}`} className="text-sm">
+                      <a
+                        href={citation.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-4"
+                      >
+                        Link shared by the submitter
+                        <ExternalLink className="size-3.5" aria-hidden />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              {candidate.photos.length > 0 ? (
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {candidate.photos
+                    .filter((photo) => photo.moderation_state !== "removed")
+                    .map((photo, index) => (
+                      <figure
+                        key={`${candidate.id}-p-${index}`}
+                        className="overflow-hidden rounded-2xl bg-surface-container-highest"
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.caption ?? "Photo sent with this submission"}
+                          loading="lazy"
+                          className="h-28 w-full object-cover"
+                        />
+                        <figcaption className="p-2 text-xs text-muted-foreground">
+                          {MODERATION_STATE_LABEL[photo.moderation_state]}
+                          {photo.caption ? ` · ${photo.caption}` : ""}
+                        </figcaption>
+                      </figure>
+                    ))}
+                </div>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  className="rounded-full"
+                  disabled={publishCommunity.isPending}
+                  onClick={() => publishCommunity.mutate(candidate.id)}
+                >
+                  <BadgeCheck className="mr-1.5 size-4" aria-hidden /> List as
+                  community-reported
                 </Button>
                 <Button
                   size="sm"
