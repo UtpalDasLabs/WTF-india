@@ -64,6 +64,7 @@ export type Review = {
   moderation_label: string | null;
   moderation_state: ModerationState;
   moderation_notes: string | null;
+  is_anonymous?: boolean;
   created_at: string;
 };
 
@@ -256,7 +257,10 @@ export const moderationQueueQuery = () =>
   });
 
 export async function averageRating(projectId: string) {
-  const { data } = await db.from("reviews").select("rating").eq("project_id", projectId);
+  const { data } = await db
+    .from("reviews_public")
+    .select("rating")
+    .eq("project_id", projectId);
   const rows = (data ?? []) as Array<{ rating: number }>;
   if (rows.length === 0) return null;
   return rows.reduce((sum, row) => sum + row.rating, 0) / rows.length;
@@ -267,7 +271,7 @@ export const ratingsQuery = () =>
     queryKey: ["ratings"],
     queryFn: async (): Promise<Record<string, { avg: number; count: number }>> => {
       const { data, error } = await db
-        .from("reviews")
+        .from("reviews_public")
         .select("project_id, rating, moderation_state");
       if (error) throw new Error(error.message);
       const map: Record<string, { total: number; count: number }> = {};
