@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -25,27 +31,31 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/projects/$projectId'
+  fullPaths: '/' | '/auth' | '/projects/$projectId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projects/$projectId'
-  id: '__root__' | '/' | '/projects/$projectId'
+  to: '/' | '/auth' | '/projects/$projectId'
+  id: '__root__' | '/' | '/auth' | '/projects/$projectId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
 }
 export const routeTree = rootRouteImport
