@@ -226,6 +226,40 @@ function Discover() {
       <h1 className="sr-only">Government projects near you</h1>
 
       <div className="space-y-4">
+        <section className="relative overflow-hidden rounded-3xl bg-primary-container">
+          <img
+            src={heroImage}
+            alt="Neighbours in an Indian city looking at a new metro line, road, hospital and water pipeline"
+            width={1920}
+            height={1088}
+            className="h-44 w-full object-cover object-[70%_center] sm:h-60"
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-[oklch(0.28_0.1_272/0.92)] via-[oklch(0.28_0.1_272/0.72)] to-transparent"
+            aria-hidden
+          />
+          <div className="absolute inset-0 flex flex-col justify-center gap-2 p-5">
+            <p className="label-sm text-white/85">We the Future</p>
+            <h2 className="max-w-[16rem] text-xl font-semibold leading-tight tracking-tight text-white sm:max-w-sm sm:text-2xl">
+              Public money, public proof.
+            </h2>
+            <p className="max-w-[17rem] text-sm leading-snug text-white/90 sm:max-w-md">
+              Every project here is checked against official records, with community
+              voices kept separate.
+            </p>
+            <div className="mt-1">
+              <Link
+                to="/constitution"
+                className="m3-state inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-2 text-sm font-medium text-[oklch(0.28_0.1_272)]"
+              >
+                <ScrollText className="size-4" aria-hidden />
+                Read the Constitution
+              </Link>
+            </div>
+          </div>
+        </section>
+
+
         <LocationGate
           status={location.state.status}
           onRequest={location.request}
