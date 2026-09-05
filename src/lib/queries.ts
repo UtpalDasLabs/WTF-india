@@ -28,7 +28,10 @@ export type Project = {
   confidence: number;
   last_verified_at: string | null;
   published: boolean;
+  source_origin?: "official" | "community";
+  community_note?: string | null;
 };
+
 
 export type ProjectSource = {
   id: string;
@@ -65,6 +68,7 @@ export type Review = {
   moderation_state: ModerationState;
   moderation_notes: string | null;
   is_anonymous?: boolean;
+  condition?: "good" | "mixed" | "poor" | null;
   created_at: string;
 };
 
@@ -76,6 +80,8 @@ export type ReviewImage = {
   moderation_label: string | null;
   moderation_state: ModerationState;
 };
+
+export type CandidatePhoto = { url: string; caption: string | null; moderation_state: ModerationState; moderation_label: string | null };
 
 export type CandidateProject = {
   id: string;
@@ -99,6 +105,19 @@ export type CandidateProject = {
   reviewer_notes: string | null;
   published_project_id: string | null;
   created_at: string;
+  origin: "agent" | "community";
+  submitted_by: string | null;
+  submitter_name: string | null;
+  is_anonymous: boolean;
+  category: string | null;
+  location_text: string | null;
+  observed_condition: string | null;
+  completion_date: string | null;
+  approximate_date_note: string | null;
+  photos: CandidatePhoto[];
+  moderation_label: string | null;
+  moderation_state: ModerationState;
+  moderation_notes: string | null;
 };
 
 const db = supabase as unknown as {
@@ -236,7 +255,24 @@ export const candidatesQuery = () =>
       const { data, error } = await db
         .from("candidate_projects")
         .select("*")
-        .order("agent_confidence", { ascending: false });
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as CandidateProject[];
+    },
+  });
+
+/** The signed-in person's own community submissions, including held ones. */
+export const mySubmissionsQuery = (userId: string | null) =>
+  queryOptions({
+    queryKey: ["my-submissions", userId],
+    enabled: Boolean(userId),
+    queryFn: async (): Promise<CandidateProject[]> => {
+      if (!userId) return [];
+      const { data, error } = await db
+        .from("candidate_projects")
+        .select("*")
+        .eq("submitted_by", userId)
+        .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return (data ?? []) as CandidateProject[];
     },

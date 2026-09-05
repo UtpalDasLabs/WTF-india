@@ -30,7 +30,12 @@ import {
 } from "@/lib/queries";
 import { MODERATION_STATE_LABEL, moderateImageMeta, moderateText } from "@/lib/moderation";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/wtf";
+import {
+  CONDITION_CLASS,
+  CONDITION_LABEL,
+  formatDate,
+  type ConditionRating,
+} from "@/lib/wtf";
 
 const ANONYMOUS_LABEL = "Verified local resident";
 
@@ -99,6 +104,7 @@ export function CommunitySection({ projectId }: { projectId: string }) {
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [condition, setCondition] = useState<ConditionRating | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [caption, setCaption] = useState("");
   const [editing, setEditing] = useState(false);
@@ -110,6 +116,7 @@ export function CommunitySection({ projectId }: { projectId: string }) {
     setRating(existing.rating);
     setBody(existing.body ?? "");
     setAnonymous(Boolean(existing.is_anonymous));
+    setCondition(existing.condition ?? null);
   }, [existing?.id, existing?.rating, existing?.body, existing?.is_anonymous]);
 
   const preview = useMemo(() => (body.trim() ? moderateText(body) : null), [body]);
@@ -120,6 +127,17 @@ export function CommunitySection({ projectId }: { projectId: string }) {
   const publicHasMine = existing
     ? visible.some((review) => review.id === existing.id)
     : false;
+  const conditionCounts = visible.reduce(
+    (acc, review) => {
+      if (review.condition) {
+        acc[review.condition] += 1;
+        acc.total += 1;
+      }
+      return acc;
+    },
+    { good: 0, mixed: 0, poor: 0, total: 0 },
+  );
+
   const average =
     visible.length > 0
       ? visible.reduce((sum, review) => sum + review.rating, 0) / visible.length
@@ -142,6 +160,7 @@ export function CommunitySection({ projectId }: { projectId: string }) {
         moderation_state: moderationState,
         moderation_notes: check.reason,
         is_anonymous: anonymous,
+        condition,
         // The real account is always stored, whether or not the post is anonymous.
         author_name: session.email?.split("@")[0] ?? "Community member",
       };
@@ -213,7 +232,19 @@ export function CommunitySection({ projectId }: { projectId: string }) {
   ) => (
     <li key={review.id} className="rounded-2xl bg-surface-container p-4">
       <div className="flex items-center justify-between gap-2">
-        <Stars value={review.rating} />
+        <span className="flex items-center gap-2">
+          <Stars value={review.rating} />
+          {review.condition ? (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-medium",
+                CONDITION_CLASS[review.condition],
+              )}
+            >
+              {CONDITION_LABEL[review.condition]}
+            </span>
+          ) : null}
+        </span>
         <span className="text-xs text-muted-foreground">{formatDate(review.created_at)}</span>
       </div>
       <p className="mt-2 text-sm">{review.masked_body ?? review.body}</p>
@@ -286,6 +317,34 @@ export function CommunitySection({ projectId }: { projectId: string }) {
         </div>
       ) : null}
 
+      {conditionCounts.total > 0 ? (
+        <div className="mt-3 rounded-2xl bg-surface-container-high p-3">
+          <h3 className="text-sm font-semibold">Current community-reported outcome</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            What {conditionCounts.total}{" "}
+            {conditionCounts.total === 1 ? "person says" : "people say"} the work looks
+            like today. This is opinion, not an official finding.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(["good", "mixed", "poor"] as ConditionRating[]).map((option) => (
+              <span
+                key={option}
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-xs font-medium",
+                  conditionCounts[option] > 0
+                    ? CONDITION_CLASS[option]
+                    : "bg-surface-container text-muted-foreground",
+                )}
+              >
+                {CONDITION_LABEL[option]} · {conditionCounts[option]}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+
+
       <ul className="mt-4 space-y-3">
         {visible.map((review) =>
           renderReview(review, { mine: existing?.id === review.id }),
@@ -351,7 +410,33 @@ export function CommunitySection({ projectId }: { projectId: string }) {
             }}
           >
             <div>
-              <span className="text-xs text-muted-foreground">Your rating</span>
+            <div>
+              <span className="text-xs text-muted-foreground">
+                How is it holding up today?
+              </span>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {(["good", "mixed", "poor"] as ConditionRating[]).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() =>
+                      setCondition((current) => (current === option ? null : option))
+                    }
+                    aria-pressed={condition === option}
+                    className={cn(
+                      "m3-state rounded-full border px-3 py-1.5 text-sm font-medium",
+                      condition === option
+                        ? cn(CONDITION_CLASS[option], "border-transparent")
+                        : "border-outline text-muted-foreground",
+                    )}
+                  >
+                    {CONDITION_LABEL[option]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <span className="text-xs text-muted-foreground">Your rating</span>
               <div className="mt-1 flex gap-1">
                 {[1, 2, 3, 4, 5].map((value) => (
                   <button

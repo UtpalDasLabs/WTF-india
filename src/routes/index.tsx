@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Compass,
@@ -19,11 +19,16 @@ import { ProjectCard } from "@/components/wtf/project-card";
 import { useLocation } from "@/hooks/use-location";
 import { projectsQuery, ratingsQuery, type Project } from "@/lib/queries";
 import {
+  CITY_RADIUS_KM,
   INDIAN_CITIES,
   STATUS_CLASS,
   STATUS_LABEL,
   STATUS_ORDER,
   distanceKm,
+  matchCityByText,
+  normalizeText,
+  projectInCity,
+  type CityOption,
   type ProjectStatus,
 } from "@/lib/wtf";
 import { cn } from "@/lib/utils";
@@ -142,6 +147,7 @@ function Discover() {
 
   const [search, setSearch] = useState("");
   const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
+  const [cityName, setCityName] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "map">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -150,8 +156,29 @@ function Discover() {
       ? { lat: location.state.lat, lng: location.state.lng }
       : null;
 
+  const chosenCity = cityName
+    ? (INDIAN_CITIES.find((city) => city.name === cityName) ?? null)
+    : null;
+  const typedCity = chosenCity ? null : matchCityByText(search);
+  const activeCity = chosenCity ?? typedCity;
+
+  const pickCity = (city: CityOption) => {
+    setCityName(city.name);
+    setSelectedId(null);
+    location.setManual(city.lat, city.lng, city.name);
+  };
+
+  const clearCity = () => {
+    setCityName(null);
+    if (typedCity) setSearch("");
+  };
+
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = normalizeText(search);
+    // A city typed into the search box becomes the city filter, so the words
+    // themselves are not also required to appear in the project text.
+    const textQuery = typedCity ? "" : query;
+
     const withDistance = (projects.data ?? [])
       .filter((project) => project.published)
       .map((project) => ({
@@ -163,7 +190,8 @@ function Discover() {
       }))
       .filter(({ project }) => {
         if (statuses.length > 0 && !statuses.includes(project.status)) return false;
-        if (!query) return true;
+        if (activeCity && !projectInCity(project, activeCity)) return false;
+        if (!textQuery) return true;
         return [
           project.name,
           project.plain_summary,
@@ -173,7 +201,7 @@ function Discover() {
           project.sector,
         ]
           .filter(Boolean)
-          .some((field) => field!.toLowerCase().includes(query));
+          .some((field) => normalizeText(field).includes(textQuery));
       });
 
     withDistance.sort((a, b) => {
@@ -183,7 +211,7 @@ function Discover() {
       return a.project.name.localeCompare(b.project.name);
     });
     return withDistance;
-  }, [projects.data, search, statuses, here]);
+  }, [projects.data, search, statuses, here, activeCity, typedCity]);
 
   const toggleStatus = (status: ProjectStatus) =>
     setStatuses((current) =>
@@ -191,6 +219,7 @@ function Discover() {
         ? current.filter((item) => item !== status)
         : [...current, status],
     );
+
 
   return (
     <AppShell>
@@ -204,7 +233,7 @@ function Discover() {
           label={
             location.state.status === "granted" ? location.state.label : undefined
           }
-          onCity={(city) => location.setManual(city.lat, city.lng, city.name)}
+          onCity={pickCity}
         />
 
         <div className="relative">
@@ -215,10 +244,48 @@ function Discover() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search a road, hospital, metro, department or district"
+            placeholder="Search a city, road, hospital, metro or department"
             className="h-12 rounded-full bg-surface-container pl-11"
             aria-label="Search projects"
           />
+        </div>
+
+        <div>
+          <p className="label-sm text-muted-foreground">City</p>
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={clearCity}
+              aria-pressed={!activeCity}
+              className={cn(
+                "m3-state shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium",
+                !activeCity
+                  ? "border-transparent bg-secondary-container text-secondary-container-foreground"
+                  : "border-outline text-muted-foreground",
+              )}
+            >
+              All of India
+            </button>
+            {INDIAN_CITIES.map((city) => {
+              const active = activeCity?.name === city.name;
+              return (
+                <button
+                  key={city.name}
+                  type="button"
+                  onClick={() => (active ? clearCity() : pickCity(city))}
+                  aria-pressed={active}
+                  className={cn(
+                    "m3-state shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium",
+                    active
+                      ? "border-transparent bg-secondary-container text-secondary-container-foreground"
+                      : "border-outline text-muted-foreground",
+                  )}
+                >
+                  {city.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -242,6 +309,15 @@ function Discover() {
             );
           })}
         </div>
+
+        {activeCity ? (
+          <p className="text-sm text-muted-foreground">
+            Showing {activeCity.name}, {activeCity.state}
+            {typedCity ? " (matched from what you typed)" : ""}. Anything within{" "}
+            {CITY_RADIUS_KM} km counts as this city.
+          </p>
+        ) : null}
+
 
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
@@ -285,6 +361,36 @@ function Discover() {
           <div className="rounded-3xl bg-destructive-container p-4 text-sm text-destructive-container-foreground">
             We could not load projects just now. Please try again in a moment.
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-3xl bg-surface-container p-6 text-center">
+            <ShieldCheck className="mx-auto size-8 text-muted-foreground" aria-hidden />
+            <p className="mt-3 text-sm font-semibold">
+              {activeCity
+                ? `No projects listed for ${activeCity.name} yet`
+                : "Nothing matches yet"}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {activeCity
+                ? `We have nothing published within ${CITY_RADIUS_KM} km of ${activeCity.name}${statuses.length > 0 ? " with the statuses you picked" : ""}. Try another city, or tell us about a project we are missing.`
+                : "Try clearing the filters or searching a nearby district."}
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => {
+                  setSearch("");
+                  setStatuses([]);
+                  setCityName(null);
+                }}
+              >
+                Show all of India
+              </Button>
+              <Button asChild className="rounded-full">
+                <Link to="/suggest">Suggest a project</Link>
+              </Button>
+            </div>
+          </div>
         ) : view === "map" ? (
           <MapCanvas
             projects={filtered.map((item) => item.project)}
@@ -292,25 +398,6 @@ function Discover() {
             selectedId={selectedId}
             onSelect={setSelectedId}
           />
-        ) : filtered.length === 0 ? (
-          <div className="rounded-3xl bg-surface-container p-6 text-center">
-            <ShieldCheck className="mx-auto size-8 text-muted-foreground" aria-hidden />
-            <p className="mt-3 text-sm font-semibold">Nothing matches yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try clearing the filters, searching a nearby district, or picking a
-              different city.
-            </p>
-            <Button
-              variant="outline"
-              className="mt-4 rounded-full"
-              onClick={() => {
-                setSearch("");
-                setStatuses([]);
-              }}
-            >
-              Clear filters
-            </Button>
-          </div>
         ) : (
           <ul className="space-y-3">
             {filtered.map(({ project, distance }: { project: Project; distance: number | null }) => (
