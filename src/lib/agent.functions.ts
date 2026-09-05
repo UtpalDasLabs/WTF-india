@@ -55,7 +55,7 @@ export const runResearchAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as {
+    const { supabase, userId } = context as unknown as {
       supabase: {
         from: (table: string) => any;
         rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }>;
