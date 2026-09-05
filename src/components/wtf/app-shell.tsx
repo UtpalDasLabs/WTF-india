@@ -46,11 +46,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               <li key={item.to} className="flex-1">
                 <Link
                   to={item.to}
-                  className="m3-state flex flex-col items-center gap-1 py-2.5 text-xs font-medium"
+                  className="m3-state flex flex-col items-center gap-1 px-1 py-2.5 text-center text-[11px] font-medium leading-tight"
                 >
                   <span
                     className={cn(
-                      "grid h-8 w-16 place-items-center rounded-full transition-colors",
+                      "grid h-8 w-full max-w-16 place-items-center rounded-full transition-colors",
                       active
                         ? "bg-secondary-container text-secondary-container-foreground"
                         : "text-muted-foreground",
