@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Compass, PlusCircle, ShieldCheck, UserRound } from "lucide-react";
+import { Compass, PlusCircle, ScrollText, ShieldCheck, UserRound } from "lucide-react";
 
 import { WtfLogo } from "@/components/wtf/logo";
 import { useSession } from "@/hooks/use-session";
@@ -12,12 +12,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const items = [
     { to: "/", label: "Discover", icon: Compass },
+    { to: "/constitution", label: "Constitution", icon: ScrollText },
     { to: "/suggest", label: "Suggest", icon: PlusCircle },
     ...(session.isReviewer
       ? [{ to: "/admin", label: "Review", icon: ShieldCheck } as const]
       : []),
     { to: "/auth", label: session.userId ? "Account" : "Sign in", icon: UserRound },
   ];
+
 
   return (
     <div className="min-h-screen bg-background pb-24">
