@@ -1,14 +1,27 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { EyeOff, ImagePlus, MessageSquare, ShieldAlert, Star } from "lucide-react";
+import {
+  EyeOff,
+  ImagePlus,
+  Lock,
+  MessageSquare,
+  Pencil,
+  ShieldAlert,
+  Star,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/hooks/use-session";
 import {
+  myReviewImagesQuery,
+  myReviewQuery,
   reviewImagesQuery,
   reviewsQuery,
   wtfDb,
@@ -18,6 +31,13 @@ import {
 import { MODERATION_STATE_LABEL, moderateImageMeta, moderateText } from "@/lib/moderation";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/wtf";
+
+const ANONYMOUS_LABEL = "Verified local resident";
+
+function authorLabel(review: Review): string {
+  if (review.is_anonymous) return ANONYMOUS_LABEL;
+  return review.author_name ?? "Community member";
+}
 
 function Stars({ value, className }: { value: number; className?: string }) {
   return (
@@ -73,20 +93,33 @@ export function CommunitySection({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const reviews = useQuery(reviewsQuery(projectId));
   const images = useQuery(reviewImagesQuery(projectId));
+  const myReview = useQuery(myReviewQuery(projectId, session.userId));
+  const myImages = useQuery(myReviewImagesQuery(myReview.data?.id ?? null));
 
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [caption, setCaption] = useState("");
+  const [editing, setEditing] = useState(false);
+
+  const existing = myReview.data ?? null;
+
+  useEffect(() => {
+    if (!existing) return;
+    setRating(existing.rating);
+    setBody(existing.body ?? "");
+    setAnonymous(Boolean(existing.is_anonymous));
+  }, [existing?.id, existing?.rating, existing?.body, existing?.is_anonymous]);
 
   const preview = useMemo(() => (body.trim() ? moderateText(body) : null), [body]);
 
   const visible = (reviews.data ?? []).filter(
     (review) => review.moderation_state === "visible",
   );
-  const mine = (reviews.data ?? []).filter(
-    (review) => review.user_id && review.user_id === session.userId,
-  );
+  const publicHasMine = existing
+    ? visible.some((review) => review.id === existing.id)
+    : false;
   const average =
     visible.length > 0
       ? visible.reduce((sum, review) => sum + review.rating, 0) / visible.length
@@ -100,60 +133,66 @@ export function CommunitySection({ projectId }: { projectId: string }) {
       const check = moderateText(body);
       if (check.action === "remove") throw new Error(check.reason);
 
-      const moderationState =
-        check.action === "hold" ? "held" : ("visible" as const);
+      const moderationState = check.action === "hold" ? "held" : ("visible" as const);
+      const payload = {
+        rating,
+        body,
+        masked_body: check.maskedText,
+        moderation_label: check.label,
+        moderation_state: moderationState,
+        moderation_notes: check.reason,
+        is_anonymous: anonymous,
+        // The real account is always stored, whether or not the post is anonymous.
+        author_name: session.email?.split("@")[0] ?? "Community member",
+      };
 
-      const { data, error } = await wtfDb
-        .from("reviews")
-        .insert({
-          project_id: projectId,
-          user_id: session.userId,
-          author_name: session.email?.split("@")[0] ?? "Community member",
-          rating,
-          body,
-          masked_body: check.maskedText,
-          moderation_label: check.label,
-          moderation_state: moderationState,
-          moderation_notes: check.reason,
-        })
-        .select("id")
-        .single();
-      if (error) throw new Error(error.message);
+      let reviewId = existing?.id ?? null;
 
-      if (imageUrl.trim()) {
+      if (reviewId) {
+        const { error } = await wtfDb.from("reviews").update(payload).eq("id", reviewId);
+        if (error) throw new Error(error.message);
+      } else {
+        const { data, error } = await wtfDb
+          .from("reviews")
+          .insert({ ...payload, project_id: projectId, user_id: session.userId })
+          .select("id")
+          .single();
+        if (error) throw new Error(error.message);
+        reviewId = (data as { id: string }).id;
+      }
+
+      if (imageUrl.trim() && reviewId) {
         const imageCheck = moderateImageMeta(imageUrl.trim(), caption);
         if (imageCheck.action !== "remove") {
           const { error: imageError } = await wtfDb.from("review_images").insert({
-            review_id: (data as { id: string }).id,
+            review_id: reviewId,
             user_id: session.userId,
             image_url: imageUrl.trim(),
             caption: caption || null,
             moderation_label: imageCheck.label,
-            moderation_state:
-              imageCheck.action === "allow"
-                ? "blurred"
-                : imageCheck.action === "hold"
-                  ? "held"
-                  : "blurred",
+            moderation_state: imageCheck.action === "hold" ? "held" : "blurred",
           });
           if (imageError) throw new Error(imageError.message);
         }
       }
 
-      return check;
+      return { check, wasEdit: Boolean(existing?.id) };
     },
-    onSuccess: (check) => {
-      setRating(0);
-      setBody("");
+    onSuccess: ({ check, wasEdit }) => {
       setImageUrl("");
       setCaption("");
+      setEditing(false);
       void queryClient.invalidateQueries({ queryKey: ["reviews", projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["my-review", projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["my-review-images"] });
       void queryClient.invalidateQueries({ queryKey: ["review-images", projectId] });
       void queryClient.invalidateQueries({ queryKey: ["ratings"] });
       toast.success(
         check.action === "hold"
           ? "Thanks. A reviewer will check this before it appears publicly."
-          : "Thanks, your review is published.",
+          : wasEdit
+            ? "Your review has been updated."
+            : "Thanks, your review is published.",
         { description: check.action === "mask" ? check.reason : undefined },
       );
     },
@@ -168,7 +207,10 @@ export function CommunitySection({ projectId }: { projectId: string }) {
     {},
   );
 
-  const renderReview = (review: Review, isMine = false) => (
+  const renderReview = (
+    review: Review,
+    options: { mine?: boolean; tiles?: ReviewImage[] } = {},
+  ) => (
     <li key={review.id} className="rounded-2xl bg-surface-container p-4">
       <div className="flex items-center justify-between gap-2">
         <Stars value={review.rating} />
@@ -176,23 +218,30 @@ export function CommunitySection({ projectId }: { projectId: string }) {
       </div>
       <p className="mt-2 text-sm">{review.masked_body ?? review.body}</p>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span className="font-medium">{review.author_name ?? "Community member"}</span>
+        <span className="inline-flex items-center gap-1 font-medium">
+          {review.is_anonymous ? (
+            <Lock className="size-3" aria-hidden />
+          ) : (
+            <UserRound className="size-3" aria-hidden />
+          )}
+          {options.mine && review.is_anonymous ? `${ANONYMOUS_LABEL} (you)` : authorLabel(review)}
+        </span>
         {review.moderation_label && review.moderation_label !== "clean" ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-tertiary-container px-2 py-0.5 text-tertiary-container-foreground">
             <ShieldAlert className="size-3" aria-hidden />
             {review.moderation_label.replaceAll("_", " ")}
           </span>
         ) : null}
-        {isMine && review.moderation_state !== "visible" ? (
+        {options.mine && review.moderation_state !== "visible" ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-surface-container-highest px-2 py-0.5">
             <EyeOff className="size-3" aria-hidden />
             {MODERATION_STATE_LABEL[review.moderation_state]}
           </span>
         ) : null}
       </div>
-      {(imagesByReview[review.id] ?? []).length > 0 ? (
+      {(options.tiles ?? imagesByReview[review.id] ?? []).length > 0 ? (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {imagesByReview[review.id]!
+          {(options.tiles ?? imagesByReview[review.id]!)
             .filter((image) => image.moderation_state !== "removed")
             .map((image) => (
               <ReviewImageTile key={image.id} image={image} />
@@ -201,6 +250,8 @@ export function CommunitySection({ projectId }: { projectId: string }) {
       ) : null}
     </li>
   );
+
+  const showForm = !existing || editing;
 
   return (
     <section
@@ -236,7 +287,9 @@ export function CommunitySection({ projectId }: { projectId: string }) {
       ) : null}
 
       <ul className="mt-4 space-y-3">
-        {visible.map((review) => renderReview(review))}
+        {visible.map((review) =>
+          renderReview(review, { mine: existing?.id === review.id }),
+        )}
         {visible.length === 0 ? (
           <li className="rounded-2xl bg-surface-container p-4 text-sm text-muted-foreground">
             No public reviews yet. Be the first to say what this project is like on the
@@ -245,20 +298,51 @@ export function CommunitySection({ projectId }: { projectId: string }) {
         ) : null}
       </ul>
 
-      {mine.some((review) => review.moderation_state !== "visible") ? (
+      {existing && !publicHasMine ? (
         <div className="mt-4">
-          <h3 className="label-sm text-muted-foreground">Your posts being checked</h3>
+          <h3 className="label-sm text-muted-foreground">Your post being checked</h3>
           <ul className="mt-2 space-y-3">
-            {mine
-              .filter((review) => review.moderation_state !== "visible")
-              .map((review) => renderReview(review, true))}
+            {renderReview(existing, { mine: true, tiles: myImages.data ?? [] })}
           </ul>
         </div>
       ) : null}
 
       <div className="mt-5 rounded-2xl bg-surface-container p-4">
-        <h3 className="text-sm font-semibold">Add your review</h3>
-        {session.userId ? (
+        <h3 className="text-sm font-semibold">
+          {existing ? "Your review" : "Add your review"}
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          One review per account for each project, so ratings stay fair. You can edit
+          yours any time.
+        </p>
+
+        {session.loading ? (
+          <p className="mt-3 text-sm text-muted-foreground">Checking your account…</p>
+        ) : !session.userId ? (
+          <div className="mt-3 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Sign in to rate this project, write a review or share a photo. It takes one
+              tap with Google.
+            </p>
+            <Button asChild className="w-full rounded-full">
+              <Link to="/auth">Continue with Google or email</Link>
+            </Button>
+          </div>
+        ) : !showForm ? (
+          <div className="mt-3 space-y-3">
+            <p className="text-sm">
+              You rated this {existing!.rating} out of 5
+              {existing!.is_anonymous ? ", posted anonymously." : "."}
+            </p>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="mr-1.5 size-4" aria-hidden /> Edit your review
+            </Button>
+          </div>
+        ) : (
           <form
             className="mt-3 space-y-3"
             onSubmit={(event) => {
@@ -299,6 +383,24 @@ export function CommunitySection({ projectId }: { projectId: string }) {
               className="rounded-2xl bg-surface-container-high"
             />
 
+            <div className="rounded-2xl bg-surface-container-high p-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="anonymous" className="text-sm font-medium">
+                  Post anonymously
+                </Label>
+                <Switch
+                  id="anonymous"
+                  checked={anonymous}
+                  onCheckedChange={setAnonymous}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {anonymous
+                  ? `Your review will show as “${ANONYMOUS_LABEL}”. Your name is never shown, but your account stays linked privately so reviewers can act on abuse.`
+                  : `Off by default. Turn this on and your review shows as “${ANONYMOUS_LABEL}” instead of your name.`}
+              </p>
+            </div>
+
             {preview && preview.action !== "allow" ? (
               <div className="rounded-2xl bg-tertiary-container p-3 text-xs text-tertiary-container-foreground">
                 <p className="font-semibold">
@@ -336,23 +438,35 @@ export function CommunitySection({ projectId }: { projectId: string }) {
               Photos start blurred until the safety check and a reviewer clear them.
             </p>
 
-            <Button
-              type="submit"
-              disabled={submit.isPending}
-              className="w-full rounded-full"
-            >
-              {submit.isPending ? "Sending…" : "Post review"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                disabled={submit.isPending}
+                className="flex-1 rounded-full"
+              >
+                {submit.isPending
+                  ? "Sending…"
+                  : existing
+                    ? "Save changes"
+                    : "Post review"}
+              </Button>
+              {existing ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => {
+                    setEditing(false);
+                    setRating(existing.rating);
+                    setBody(existing.body ?? "");
+                    setAnonymous(Boolean(existing.is_anonymous));
+                  }}
+                >
+                  Cancel
+                </Button>
+              ) : null}
+            </div>
           </form>
-        ) : (
-          <div className="mt-3 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Sign in to rate this project, write a review or share a photo.
-            </p>
-            <Button asChild className="rounded-full">
-              <Link to="/auth">Sign in</Link>
-            </Button>
-          </div>
         )}
       </div>
     </section>
