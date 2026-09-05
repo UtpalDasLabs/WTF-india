@@ -15,32 +15,31 @@ export function EvidencePanel({
   return (
     <section
       aria-labelledby="evidence-heading"
-      className="rounded-3xl border border-border bg-surface-container-high p-4"
+      className="rounded-xl border border-border bg-surface-container-high p-4"
     >
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-container text-primary-container-foreground">
           <FileText className="size-4.5" aria-hidden />
         </span>
         <div>
-          <h2 id="evidence-heading" className="text-base font-semibold">
+          <h2 id="evidence-heading" className="display-sm">
             Where these facts come from
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Every fact above is taken from an official document or portal. Nothing on
-            this list comes from community posts.
+            Every fact above is taken from an official document or portal. Nothing on this list
+            comes from community posts.
           </p>
         </div>
       </div>
 
       {sources.length === 0 ? (
-        <p className="mt-4 rounded-2xl bg-surface-container p-4 text-sm text-muted-foreground">
-          No official source has been attached yet, so this project is not shown as
-          verified.
+        <p className="mt-4 rounded-lg bg-surface-container p-4 text-sm text-muted-foreground">
+          No official source has been attached yet, so this project is not shown as verified.
         </p>
       ) : (
         <ul className="mt-4 space-y-3">
           {sources.map((source) => (
-            <li key={source.id} className="rounded-2xl bg-surface-container p-4">
+            <li key={source.id} className="rounded-lg bg-surface-container p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="label-sm rounded-full bg-secondary-container px-2 py-0.5 text-secondary-container-foreground">
                   {SOURCE_TYPE_LABEL[source.source_type]}
@@ -58,9 +57,7 @@ export function EvidencePanel({
                 <ExternalLink className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               </a>
               {source.publisher ? (
-                <p className="text-xs text-muted-foreground">
-                  Published by {source.publisher}
-                </p>
+                <p className="text-xs text-muted-foreground">Published by {source.publisher}</p>
               ) : null}
 
               {source.extracted_evidence ? (

@@ -14,12 +14,7 @@ export function WtfMark({
   title?: string;
 }) {
   return (
-    <svg
-      viewBox="0 0 64 64"
-      role="img"
-      aria-label={title}
-      className={cn("size-9", className)}
-    >
+    <svg viewBox="0 0 64 64" role="img" aria-label={title} className={cn("size-9", className)}>
       <defs>
         <linearGradient id="wtf-badge" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#2B2E8C" />
@@ -31,12 +26,7 @@ export function WtfMark({
       <rect x="0" y="0" width="64" height="64" rx="17" fill="url(#wtf-badge)" />
 
       {/* WTF, drawn as strokes so it reads at icon size */}
-      <g
-        fill="none"
-        strokeWidth="4.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <g fill="none" strokeWidth="4.6" strokeLinecap="round" strokeLinejoin="round">
         {/* W */}
         <path d="M7 20.5 L12.4 39 L17.8 28.5 L23.2 39 L28.6 20.5" stroke="#3DD9A0" />
         {/* T */}

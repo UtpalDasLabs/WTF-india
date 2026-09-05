@@ -11,6 +11,11 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    # Publishing the rolling release below needs write access to the repo's
+    # contents. Nothing else here does, so it is granted per-job rather than
+    # to the whole workflow.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +60,63 @@ jobs:
           name: we-the-future-debug-apk
           path: artifacts/*.apk
           if-no-files-found: error
+
+      # Actions artifacts can only be downloaded by a logged-in GitHub user, so the
+      # website cannot link to one. A release asset can be downloaded by anybody, so
+      # the same debug APK is also pushed to a single rolling release tagged "latest".
+      # The asset name is deliberately fixed (no commit sha) so that
+      #   https://github.com/${{ github.repository }}/releases/latest/download/we-the-future.apk
+      # is a permanent URL the site can hardcode.
+      - name: Publish the debug APK to the rolling "latest" release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: latest
+        run: |
+          set -euo pipefail
+
+          # The release asset keeps a fixed name; the Actions artifact above keeps
+          # its sha-stamped one.
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/we-the-future.apk
+
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          Automatic **debug** build of the current \`main\` branch. It is rebuilt and
+          replaced on every push to \`main\`, so the link below always serves the newest
+          build.
+
+          - Commit: \`$GITHUB_SHA\`
+          - Built: $(date -u '+%Y-%m-%d %H:%M UTC')
+          - Download: <https://github.com/$GITHUB_REPOSITORY/releases/latest/download/we-the-future.apk>
+
+          **This is a debug build.** It is not signed with a Play Store release key, so
+          it cannot be published to the Play Store and Android will refuse to install it
+          until you allow installs from **unknown sources** for whichever app (browser,
+          file manager) you open the APK with.
+          EOF
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # Point the rolling tag at the commit that was just built. Editing a
+            # published release cannot move its tag, so the ref is moved directly.
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
+              -f sha="$GITHUB_SHA" -F force=true >/dev/null \
+              || echo "::warning::Could not move the $TAG tag to $GITHUB_SHA."
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "Latest main build (debug)" \
+              --notes-file "$RUNNER_TEMP/release-notes.md" \
+              --draft=false --latest
+          else
+            # First ever run: no release and no tag yet, so create both.
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Latest main build (debug)" \
+              --notes-file "$RUNNER_TEMP/release-notes.md" \
+              --latest
+          fi
+
+          # --clobber replaces the asset from the previous run, and is a no-op-safe
+          # plain upload when the release has no asset yet.
+          gh release upload "$TAG" artifacts/we-the-future.apk \
+            --repo "$GITHUB_REPOSITORY" --clobber
 
       # A release APK is only worth producing when it can be signed — an unsigned one
       # will not install. Configure the four secrets below to turn this on.

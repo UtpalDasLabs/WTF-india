@@ -14,30 +14,29 @@ export function VerifiedTimeline({
   return (
     <section
       aria-labelledby="timeline-heading"
-      className="rounded-3xl bg-surface-container p-4"
+      className="rounded-xl border border-border bg-surface p-4"
     >
-      <h2 id="timeline-heading" className="text-base font-semibold">
+      <h2 id="timeline-heading" className="display-sm">
         Official timeline
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Dates recorded in official documents. Community comments never change this
-        list.
+        Dates recorded in official documents. Community comments never change this list.
       </p>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <div className="rounded-2xl bg-surface-container-high p-3">
+        <div className="rounded-lg bg-surface-container-high p-3">
           <dt className="text-xs text-muted-foreground">Started</dt>
           <dd className="font-medium">{formatDate(project.start_date)}</dd>
         </div>
-        <div className="rounded-2xl bg-surface-container-high p-3">
+        <div className="rounded-lg bg-surface-container-high p-3">
           <dt className="text-xs text-muted-foreground">Promised finish</dt>
           <dd className="font-medium">{formatDate(project.planned_end_date)}</dd>
         </div>
-        <div className="rounded-2xl bg-surface-container-high p-3">
+        <div className="rounded-lg bg-surface-container-high p-3">
           <dt className="text-xs text-muted-foreground">Actually finished</dt>
           <dd className="font-medium">{formatDate(project.actual_end_date)}</dd>
         </div>
-        <div className="rounded-2xl bg-surface-container-high p-3">
+        <div className="rounded-lg bg-surface-container-high p-3">
           <dt className="text-xs text-muted-foreground">Current stage</dt>
           <dd className="font-medium">{STATUS_LABEL[project.status]}</dd>
         </div>

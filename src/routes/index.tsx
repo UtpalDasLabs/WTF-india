@@ -1,23 +1,12 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Compass,
-  List,
-  LocateFixed,
-  Map as MapIcon,
-  ScrollText,
-  Search,
-  ShieldCheck,
-} from "lucide-react";
+import { List, LocateFixed, Map as MapIcon, Search, ShieldCheck } from "lucide-react";
 
-import heroImage from "@/assets/civic-hero.jpg";
-
-
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppShell } from "@/components/wtf/app-shell";
+import { ApkDownloadCard } from "@/components/wtf/apk-download";
 import { MapCanvas } from "@/components/wtf/map-canvas";
 import { ProjectCard } from "@/components/wtf/project-card";
 import { useLocation } from "@/hooks/use-location";
@@ -29,6 +18,7 @@ import {
   STATUS_LABEL,
   STATUS_ORDER,
   distanceKm,
+  formatBudget,
   matchCityByText,
   normalizeText,
   projectInCity,
@@ -60,86 +50,130 @@ export const Route = createFileRoute("/")({
   component: Discover,
 });
 
-function LocationGate({
-  status,
-  onRequest,
-  onCity,
-  label,
-  onClear,
-}: {
-  status: string;
-  onRequest: () => void;
-  onCity: (city: (typeof INDIAN_CITIES)[number]) => void;
-  label?: string | undefined;
-  onClear: () => void;
-}) {
-  if (status === "granted") {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-3xl bg-primary-container p-3 text-primary-container-foreground">
-        <p className="flex items-center gap-2 text-sm font-medium">
-          <LocateFixed className="size-4" aria-hidden />
-          Showing projects near {label}
-        </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClear}
-          className="rounded-full text-primary-container-foreground"
-        >
-          Change
-        </Button>
-      </div>
-    );
-  }
+/**
+ * The masthead earns its height by carrying live figures rather than a stock
+ * illustration — the numbers are the argument the product is making.
+ */
+function Masthead({ projects }: { projects: Project[] }) {
+  const stats = useMemo(() => {
+    const published = projects.filter((project) => project.published);
+    const delayed = published.filter((project) => project.status === "delayed").length;
+    const money = published.reduce((sum, project) => sum + (project.budget_inr ?? 0), 0);
+    return { tracked: published.length, delayed, money };
+  }, [projects]);
 
   return (
-    <div className="rounded-3xl bg-surface-container p-4">
-      <p className="flex items-center gap-2 text-sm font-semibold">
-        <Compass className="size-4" aria-hidden />
-        {status === "locating"
-          ? "Finding where you are…"
-          : status === "denied"
-            ? "Location permission was turned off"
-            : status === "unavailable"
-              ? "We could not read your location"
-              : "See projects around you"}
-      </p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {status === "denied"
-          ? "That is fine. Allow location in your browser settings, or pick a city below and everything still works."
-          : status === "unavailable"
-            ? "Your device did not share a location. Pick a city below instead."
-            : "Share your location once and projects are sorted by how close they are. You can also just pick a city."}
-      </p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {status !== "denied" ? (
-          <Button
-            onClick={onRequest}
-            disabled={status === "locating"}
-            className="rounded-full"
-          >
-            <LocateFixed className="mr-1.5 size-4" aria-hidden />
-            {status === "locating" ? "Locating…" : "Use my location"}
-          </Button>
-        ) : null}
+    <section className="-mx-4 mb-8 bg-ink px-4 py-12 text-ink-foreground md:-mx-6 md:rounded-2xl md:px-10 md:py-14">
+      <div className="max-w-3xl">
+        <p className="eyebrow text-ink-muted">We the Future · India</p>
+        <h2 className="display-hero mt-5 text-balance">
+          Public money leaves a <em className="font-normal italic">paper trail</em>. Follow it.
+        </h2>
+        <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted">
+          Every project here is checked against official records — sanction orders, tenders, audit
+          reports. What the public says about them is kept separate, and labelled as such.
+        </p>
       </div>
 
-      <div className="mt-3">
-        <p className="label-sm text-muted-foreground">Or choose a city</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {INDIAN_CITIES.map((city) => (
-            <button
-              key={city.name}
-              type="button"
-              onClick={() => onCity(city)}
-              className="m3-state rounded-full border border-outline px-3 py-1.5 text-sm"
+      <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-6 border-t border-ink-line pt-8 sm:grid-cols-3 md:max-w-2xl">
+        {[
+          { label: "Projects tracked", value: stats.tracked.toLocaleString("en-IN") },
+          { label: "Running late", value: stats.delayed.toLocaleString("en-IN") },
+          { label: "Public money covered", value: formatBudget(stats.money) },
+        ].map((stat) => (
+          <div key={stat.label}>
+            <dt className="eyebrow text-ink-muted">{stat.label}</dt>
+            <dd
+              data-numeric
+              className="display-lg mt-2 text-ink-foreground"
+              style={{ fontSize: "clamp(1.5rem, 2.4vw, 2rem)" }}
             >
+              {stat.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <Link
+        to="/constitution"
+        className="m3-state mt-9 inline-flex items-center gap-2 rounded-full bg-ink-foreground px-5 py-2.5 text-sm font-semibold text-ink hover:opacity-90"
+      >
+        Read the Constitution
+      </Link>
+    </section>
+  );
+}
+
+function LocationBar({
+  status,
+  label,
+  onRequest,
+  onClear,
+  activeCity,
+  onCity,
+}: {
+  status: string;
+  label?: string | undefined;
+  onRequest: () => void;
+  onClear: () => void;
+  activeCity: CityOption | null;
+  onCity: (city: CityOption) => void;
+}) {
+  const denied = status === "denied" || status === "unavailable";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {status === "granted" ? (
+        <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3.5 py-2 text-sm">
+          <LocateFixed className="size-4 text-primary" aria-hidden />
+          Near <strong className="font-semibold">{label}</strong>
+          <button
+            type="button"
+            onClick={onClear}
+            className="ml-1 text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            change
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onRequest}
+          disabled={status === "locating"}
+          className="m3-state inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3.5 py-2 text-sm font-medium hover:bg-surface-container-high disabled:opacity-60"
+        >
+          <LocateFixed className="size-4" aria-hidden />
+          {status === "locating" ? "Locating…" : "Use my location"}
+        </button>
+      )}
+
+      {/* 26 city chips in a wall was noise; a select keeps every city one tap away. */}
+      <label className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3.5 py-2 text-sm">
+        <span className="text-muted-foreground">City</span>
+        <select
+          value={activeCity?.name ?? ""}
+          onChange={(event) => {
+            const city = INDIAN_CITIES.find((item) => item.name === event.target.value);
+            if (city) onCity(city);
+            else onClear();
+          }}
+          className="cursor-pointer bg-transparent font-medium outline-none"
+          aria-label="Filter by city"
+        >
+          <option value="">All of India</option>
+          {INDIAN_CITIES.map((city) => (
+            <option key={city.name} value={city.name}>
               {city.name}
-            </button>
+            </option>
           ))}
-        </div>
-      </div>
+        </select>
+      </label>
+
+      {denied ? (
+        <span className="text-xs text-muted-foreground">
+          Location is off — pick a city instead.
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -219,61 +253,82 @@ function Discover() {
 
   const toggleStatus = (status: ProjectStatus) =>
     setStatuses((current) =>
-      current.includes(status)
-        ? current.filter((item) => item !== status)
-        : [...current, status],
+      current.includes(status) ? current.filter((item) => item !== status) : [...current, status],
     );
 
+  const resetFilters = () => {
+    setSearch("");
+    setStatuses([]);
+    setCityName(null);
+  };
+
+  const mapNode = (
+    <MapCanvas
+      projects={filtered.map((item) => item.project)}
+      you={here}
+      selectedId={selectedId}
+      onSelect={setSelectedId}
+    />
+  );
+
+  const listNode = projects.isLoading ? (
+    <div className="space-y-3">
+      {[0, 1, 2].map((index) => (
+        <Skeleton key={index} className="h-44 rounded-xl" />
+      ))}
+    </div>
+  ) : projects.isError ? (
+    <div className="rounded-xl border border-destructive/30 bg-destructive-container p-5 text-sm text-destructive-container-foreground">
+      We could not load projects just now. Please try again in a moment.
+    </div>
+  ) : filtered.length === 0 ? (
+    <div className="rounded-xl border border-border bg-surface p-10 text-center">
+      <ShieldCheck className="mx-auto size-8 text-muted-foreground" aria-hidden />
+      <p className="display-sm mt-4">
+        {activeCity ? `Nothing listed for ${activeCity.name} yet` : "Nothing matches yet"}
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+        {activeCity
+          ? `We have nothing published within ${CITY_RADIUS_KM} km of ${activeCity.name}${statuses.length > 0 ? " with the statuses you picked" : ""}. Try another city, or tell us about a project we are missing.`
+          : "Try clearing the filters or searching a nearby district."}
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <button
+          type="button"
+          onClick={resetFilters}
+          className="m3-state rounded-full border border-outline-variant px-4 py-2 text-sm font-medium hover:bg-surface-container-high"
+        >
+          Show all of India
+        </button>
+        <Link
+          to="/suggest"
+          className="m3-state rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"
+        >
+          Suggest a project
+        </Link>
+      </div>
+    </div>
+  ) : (
+    <ul className="space-y-3">
+      {filtered.map(({ project, distance }: { project: Project; distance: number | null }) => (
+        <li key={project.id}>
+          <ProjectCard
+            project={project}
+            distance={distance}
+            rating={ratings.data?.[project.id] ?? null}
+          />
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
-    <AppShell>
+    <AppShell width="wide">
       <h1 className="sr-only">Government projects near you</h1>
 
+      <Masthead projects={projects.data ?? []} />
+
       <div className="space-y-4">
-        <section className="relative overflow-hidden rounded-3xl bg-primary-container">
-          <img
-            src={heroImage}
-            alt="Neighbours in an Indian city looking at a new metro line, road, hospital and water pipeline"
-            width={1920}
-            height={1088}
-            className="h-44 w-full object-cover object-[70%_center] sm:h-60"
-          />
-          <div
-            className="absolute inset-0 bg-gradient-to-r from-[oklch(0.28_0.1_272/0.92)] via-[oklch(0.28_0.1_272/0.72)] to-transparent"
-            aria-hidden
-          />
-          <div className="absolute inset-0 flex flex-col justify-center gap-2 p-5">
-            <p className="label-sm text-white/85">We the Future</p>
-            <h2 className="max-w-[16rem] text-xl font-semibold leading-tight tracking-tight text-white sm:max-w-sm sm:text-2xl">
-              Public money, public proof.
-            </h2>
-            <p className="max-w-[17rem] text-sm leading-snug text-white/90 sm:max-w-md">
-              Every project here is checked against official records, with community
-              voices kept separate.
-            </p>
-            <div className="mt-1">
-              <Link
-                to="/constitution"
-                className="m3-state inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-2 text-sm font-medium text-[oklch(0.28_0.1_272)]"
-              >
-                <ScrollText className="size-4" aria-hidden />
-                Read the Constitution
-              </Link>
-            </div>
-          </div>
-        </section>
-
-
-        <LocationGate
-          status={location.state.status}
-          onRequest={location.request}
-          onClear={location.clear}
-          label={
-            location.state.status === "granted" ? location.state.label : undefined
-          }
-          onCity={pickCity}
-        />
-
         <div className="relative">
           <Search
             className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -283,50 +338,21 @@ function Discover() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search a city, road, hospital, metro or department"
-            className="h-12 rounded-full bg-surface-container pl-11"
+            className="h-12 rounded-full border-outline-variant bg-surface pl-11 text-base"
             aria-label="Search projects"
           />
         </div>
 
-        <div>
-          <p className="label-sm text-muted-foreground">City</p>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-            <button
-              type="button"
-              onClick={clearCity}
-              aria-pressed={!activeCity}
-              className={cn(
-                "m3-state shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium",
-                !activeCity
-                  ? "border-transparent bg-secondary-container text-secondary-container-foreground"
-                  : "border-outline text-muted-foreground",
-              )}
-            >
-              All of India
-            </button>
-            {INDIAN_CITIES.map((city) => {
-              const active = activeCity?.name === city.name;
-              return (
-                <button
-                  key={city.name}
-                  type="button"
-                  onClick={() => (active ? clearCity() : pickCity(city))}
-                  aria-pressed={active}
-                  className={cn(
-                    "m3-state shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium",
-                    active
-                      ? "border-transparent bg-secondary-container text-secondary-container-foreground"
-                      : "border-outline text-muted-foreground",
-                  )}
-                >
-                  {city.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <LocationBar
+          status={location.state.status}
+          onRequest={location.request}
+          onClear={clearCity}
+          label={location.state.status === "granted" ? location.state.label : undefined}
+          activeCity={activeCity}
+          onCity={pickCity}
+        />
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex flex-wrap gap-2">
           {STATUS_ORDER.map((status) => {
             const active = statuses.includes(status);
             return (
@@ -336,10 +362,10 @@ function Discover() {
                 onClick={() => toggleStatus(status)}
                 aria-pressed={active}
                 className={cn(
-                  "m3-state shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium",
+                  "m3-state rounded-full border px-3 py-1.5 text-sm font-medium",
                   active
                     ? cn(STATUS_CLASS[status], "border-transparent")
-                    : "border-outline text-muted-foreground",
+                    : "border-outline-variant text-muted-foreground hover:bg-surface-container-high hover:text-foreground",
                 )}
               >
                 {STATUS_LABEL[status]}
@@ -347,114 +373,58 @@ function Discover() {
             );
           })}
         </div>
-
-        {activeCity ? (
-          <p className="text-sm text-muted-foreground">
-            Showing {activeCity.name}, {activeCity.state}
-            {typedCity ? " (matched from what you typed)" : ""}. Anything within{" "}
-            {CITY_RADIUS_KM} km counts as this city.
-          </p>
-        ) : null}
-
-
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
-            {projects.isLoading
-              ? "Loading projects…"
-              : `${filtered.length} ${filtered.length === 1 ? "project" : "projects"} found`}
-          </p>
-          <div className="flex rounded-full bg-surface-container p-1">
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm",
-                view === "list" &&
-                  "bg-secondary-container text-secondary-container-foreground",
-              )}
-            >
-              <List className="size-4" aria-hidden /> List
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("map")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm",
-                view === "map" &&
-                  "bg-secondary-container text-secondary-container-foreground",
-              )}
-            >
-              <MapIcon className="size-4" aria-hidden /> Map
-            </button>
-          </div>
-        </div>
-
-        {projects.isLoading ? (
-          <div className="space-y-3">
-            {[0, 1, 2].map((index) => (
-              <Skeleton key={index} className="h-40 rounded-3xl" />
-            ))}
-          </div>
-        ) : projects.isError ? (
-          <div className="rounded-3xl bg-destructive-container p-4 text-sm text-destructive-container-foreground">
-            We could not load projects just now. Please try again in a moment.
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-3xl bg-surface-container p-6 text-center">
-            <ShieldCheck className="mx-auto size-8 text-muted-foreground" aria-hidden />
-            <p className="mt-3 text-sm font-semibold">
-              {activeCity
-                ? `No projects listed for ${activeCity.name} yet`
-                : "Nothing matches yet"}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {activeCity
-                ? `We have nothing published within ${CITY_RADIUS_KM} km of ${activeCity.name}${statuses.length > 0 ? " with the statuses you picked" : ""}. Try another city, or tell us about a project we are missing.`
-                : "Try clearing the filters or searching a nearby district."}
-            </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button
-                variant="outline"
-                className="rounded-full"
-                onClick={() => {
-                  setSearch("");
-                  setStatuses([]);
-                  setCityName(null);
-                }}
-              >
-                Show all of India
-              </Button>
-              <Button asChild className="rounded-full">
-                <Link to="/suggest">Suggest a project</Link>
-              </Button>
-            </div>
-          </div>
-        ) : view === "map" ? (
-          <MapCanvas
-            projects={filtered.map((item) => item.project)}
-            you={here}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
-        ) : (
-          <ul className="space-y-3">
-            {filtered.map(({ project, distance }: { project: Project; distance: number | null }) => (
-              <li key={project.id}>
-                <ProjectCard
-                  project={project}
-                  distance={distance}
-                  rating={ratings.data?.[project.id] ?? null}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <p className="pt-2 text-xs text-muted-foreground">
-          Facts and timelines come from official sources and are checked by a reviewer.
-          Ratings, reviews and photos come from the public and are kept separate.
-        </p>
       </div>
+
+      <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {projects.isLoading
+            ? "Loading projects…"
+            : `${filtered.length} ${filtered.length === 1 ? "project" : "projects"}`}
+          {activeCity ? ` · within ${CITY_RADIUS_KM} km of ${activeCity.name}` : ""}
+        </p>
+
+        {/* Desktop shows both panes at once, so the toggle is only for narrow screens. */}
+        <div className="flex rounded-full border border-outline-variant p-0.5 lg:hidden">
+          {(
+            [
+              ["list", List, "List"],
+              ["map", MapIcon, "Map"],
+            ] as const
+          ).map(([key, Icon, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setView(key)}
+              aria-pressed={view === key}
+              className={cn(
+                "m3-state flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium",
+                view === key
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-4" aria-hidden /> {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-8">
+        <div className={cn(view === "map" && "hidden lg:block")}>{listNode}</div>
+
+        {/* The map tracks the list on desktop instead of hiding behind a tab. It
+            carries its own frame and aspect ratio, so it is not boxed again here. */}
+        <div className={cn("lg:sticky lg:top-24", view === "list" && "hidden lg:block")}>
+          {mapNode}
+        </div>
+      </div>
+
+      <ApkDownloadCard className="mt-10" />
+
+      <p className="mt-6 text-xs leading-relaxed text-muted-foreground md:hidden">
+        Facts and timelines come from official sources and are checked by a reviewer. Ratings,
+        reviews and photos come from the public and are kept separate.
+      </p>
     </AppShell>
   );
 }
