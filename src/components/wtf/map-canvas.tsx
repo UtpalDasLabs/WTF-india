@@ -183,7 +183,8 @@ export function MapCanvas({
       instance.invalidateSize();
       runPendingFit();
     };
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(handleResize);
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(handleResize);
     observer?.observe(element);
     const raf = requestAnimationFrame(handleResize);
 
