@@ -61,7 +61,7 @@ function LocationGate({
   status: string;
   onRequest: () => void;
   onCity: (city: (typeof INDIAN_CITIES)[number]) => void;
-  label?: string;
+  label?: string | undefined;
   onClear: () => void;
 }) {
   if (status === "granted") {
