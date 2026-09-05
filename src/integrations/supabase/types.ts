@@ -18,14 +18,25 @@ export type Database = {
         Row: {
           agent_confidence: number
           agent_notes: string | null
+          approximate_date_note: string | null
           budget_inr: number | null
+          category: string | null
           citations: Json
+          completion_date: string | null
           created_at: string
           department: string | null
           discovered_from: string | null
           district: string | null
           id: string
+          is_anonymous: boolean
+          location_text: string | null
+          moderation_label: string | null
+          moderation_notes: string | null
+          moderation_state: Database["public"]["Enums"]["moderation_state"]
           name: string
+          observed_condition: string | null
+          origin: string
+          photos: Json
           plain_summary: string | null
           proposed_status: Database["public"]["Enums"]["project_status"] | null
           published_project_id: string | null
@@ -33,19 +44,32 @@ export type Database = {
           reviewer_id: string | null
           reviewer_notes: string | null
           state: string | null
+          submitted_by: string | null
+          submitter_name: string | null
           updated_at: string
         }
         Insert: {
           agent_confidence?: number
           agent_notes?: string | null
+          approximate_date_note?: string | null
           budget_inr?: number | null
+          category?: string | null
           citations?: Json
+          completion_date?: string | null
           created_at?: string
           department?: string | null
           discovered_from?: string | null
           district?: string | null
           id?: string
+          is_anonymous?: boolean
+          location_text?: string | null
+          moderation_label?: string | null
+          moderation_notes?: string | null
+          moderation_state?: Database["public"]["Enums"]["moderation_state"]
           name: string
+          observed_condition?: string | null
+          origin?: string
+          photos?: Json
           plain_summary?: string | null
           proposed_status?: Database["public"]["Enums"]["project_status"] | null
           published_project_id?: string | null
@@ -53,19 +77,32 @@ export type Database = {
           reviewer_id?: string | null
           reviewer_notes?: string | null
           state?: string | null
+          submitted_by?: string | null
+          submitter_name?: string | null
           updated_at?: string
         }
         Update: {
           agent_confidence?: number
           agent_notes?: string | null
+          approximate_date_note?: string | null
           budget_inr?: number | null
+          category?: string | null
           citations?: Json
+          completion_date?: string | null
           created_at?: string
           department?: string | null
           discovered_from?: string | null
           district?: string | null
           id?: string
+          is_anonymous?: boolean
+          location_text?: string | null
+          moderation_label?: string | null
+          moderation_notes?: string | null
+          moderation_state?: Database["public"]["Enums"]["moderation_state"]
           name?: string
+          observed_condition?: string | null
+          origin?: string
+          photos?: Json
           plain_summary?: string | null
           proposed_status?: Database["public"]["Enums"]["project_status"] | null
           published_project_id?: string | null
@@ -73,6 +110,8 @@ export type Database = {
           reviewer_id?: string | null
           reviewer_notes?: string | null
           state?: string | null
+          submitted_by?: string | null
+          submitter_name?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -205,6 +244,7 @@ export type Database = {
         Row: {
           actual_end_date: string | null
           budget_inr: number | null
+          community_note: string | null
           confidence: number
           created_at: string
           department: string | null
@@ -219,6 +259,7 @@ export type Database = {
           planned_end_date: string | null
           published: boolean
           sector: string | null
+          source_origin: string
           start_date: string | null
           state: string | null
           status: Database["public"]["Enums"]["project_status"]
@@ -228,6 +269,7 @@ export type Database = {
         Insert: {
           actual_end_date?: string | null
           budget_inr?: number | null
+          community_note?: string | null
           confidence?: number
           created_at?: string
           department?: string | null
@@ -242,6 +284,7 @@ export type Database = {
           planned_end_date?: string | null
           published?: boolean
           sector?: string | null
+          source_origin?: string
           start_date?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
@@ -251,6 +294,7 @@ export type Database = {
         Update: {
           actual_end_date?: string | null
           budget_inr?: number | null
+          community_note?: string | null
           confidence?: number
           created_at?: string
           department?: string | null
@@ -265,6 +309,7 @@ export type Database = {
           planned_end_date?: string | null
           published?: boolean
           sector?: string | null
+          source_origin?: string
           start_date?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
@@ -325,6 +370,7 @@ export type Database = {
         Row: {
           author_name: string | null
           body: string | null
+          condition: string | null
           created_at: string
           id: string
           is_anonymous: boolean
@@ -339,6 +385,7 @@ export type Database = {
         Insert: {
           author_name?: string | null
           body?: string | null
+          condition?: string | null
           created_at?: string
           id?: string
           is_anonymous?: boolean
@@ -353,6 +400,7 @@ export type Database = {
         Update: {
           author_name?: string | null
           body?: string | null
+          condition?: string | null
           created_at?: string
           id?: string
           is_anonymous?: boolean
@@ -425,6 +473,7 @@ export type Database = {
       reviews_public: {
         Row: {
           author_name: string | null
+          condition: string | null
           created_at: string | null
           id: string | null
           is_anonymous: boolean | null

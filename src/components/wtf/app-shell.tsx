@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Compass, ShieldCheck, UserRound } from "lucide-react";
+import { Compass, PlusCircle, ShieldCheck, UserRound } from "lucide-react";
 
+import { WtfLogo } from "@/components/wtf/logo";
 import { useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const items = [
     { to: "/", label: "Discover", icon: Compass },
+    { to: "/suggest", label: "Suggest", icon: PlusCircle },
     ...(session.isReviewer
       ? [{ to: "/admin", label: "Review", icon: ShieldCheck } as const]
       : []),
@@ -21,18 +23,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background pb-24">
       <header className="sticky top-0 z-20 border-b border-border bg-surface/85 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="grid size-9 place-items-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground">
-              WTF
-            </span>
-            <span>
-              <span className="block text-sm font-semibold leading-tight">
-                We the Future
-              </span>
-              <span className="block text-xs text-muted-foreground">
-                Public projects, checked against official records
-              </span>
-            </span>
+          <Link to="/" aria-label="We the Future home">
+            <WtfLogo />
           </Link>
         </div>
       </header>
