@@ -28,7 +28,7 @@ export const Route = createFileRoute("/projects/$projectId")({
       },
     ],
   }),
-  component: ProjectDetail;
+  component: ProjectDetail,
 });
 
 function ProjectDetail() {
