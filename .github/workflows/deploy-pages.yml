@@ -27,8 +27,13 @@ jobs:
           node-version: 22
           cache: npm
 
+      # npm ci is deliberately not used here. ajv is an optional peer dependency of
+      # @hookform/resolvers, and npm writes a lockfile for it that its own `npm ci`
+      # ideal-tree check then rejects ("Invalid: lock file's ajv@6 does not satisfy
+      # ajv@8"), even immediately after a clean `npm install`. `npm install` still
+      # installs from the committed lockfile, so versions stay pinned.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       # Creates the Pages site if the repo has none. It does NOT change an existing
       # site's source, which is what the next step is for.
