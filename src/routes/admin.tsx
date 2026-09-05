@@ -227,7 +227,10 @@ function AdminPage() {
   }
 
   const pendingCandidates = (candidates.data ?? []).filter(
-    (candidate) => candidate.review_state !== "approved",
+    (candidate) => candidate.review_state !== "approved" && candidate.origin !== "community",
+  );
+  const communityQueue = (candidates.data ?? []).filter(
+    (candidate) => candidate.origin === "community" && candidate.review_state !== "approved",
   );
 
   return (
