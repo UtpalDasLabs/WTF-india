@@ -30,11 +30,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # enablement: true turns Pages on and sets its source to GitHub Actions, so a
-      # deploy cannot silently land next to a branch-based site that shadows it.
+      # Creates the Pages site if the repo has none. It does NOT change an existing
+      # site's source, which is what the next step is for.
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+
+      # A Pages site left on "Deploy from a branch" serves Jekyll's render of the
+      # repo (README.md as the home page) and silently ignores this workflow's
+      # artifact — while deploy-pages still reports success. Force the source to
+      # GitHub Actions so that cannot happen.
+      - name: Ensure Pages source is GitHub Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api -X PUT "repos/$GITHUB_REPOSITORY/pages" -f build_type=workflow; then
+            echo "Pages source set to GitHub Actions."
+          else
+            echo "::warning::Could not set the Pages source. If the site shows the README instead of the app, set Settings > Pages > Source to GitHub Actions by hand."
+          fi
 
       # Reads GITHUB_REPOSITORY to derive the /<repo>/ base path. Supabase
       # credentials come from the committed .env; they are publishable keys.
