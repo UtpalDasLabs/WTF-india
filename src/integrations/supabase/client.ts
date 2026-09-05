@@ -49,6 +49,11 @@ function createSupabaseClient() {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      // Android signs in through a Chrome Custom Tab and comes back on a custom-scheme
+      // deep link carrying a `code`, which only exchangeCodeForSession can redeem, and
+      // that needs PKCE. PKCE is also the recommended flow on the web, where supabase-js
+      // redeems the code from the URL by itself.
+      flowType: "pkce",
     },
   });
 }

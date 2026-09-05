@@ -42,8 +42,8 @@ function ProjectDetail() {
       <AppShell>
         <div className="space-y-3">
           <Skeleton className="h-8 w-24 rounded-full" />
-          <Skeleton className="h-40 rounded-3xl" />
-          <Skeleton className="h-60 rounded-3xl" />
+          <Skeleton className="h-40 rounded-xl" />
+          <Skeleton className="h-60 rounded-xl" />
         </div>
       </AppShell>
     );
@@ -52,7 +52,7 @@ function ProjectDetail() {
   if (!project.data) {
     return (
       <AppShell>
-        <div className="rounded-3xl bg-surface-container p-6 text-center">
+        <div className="rounded-xl border border-border bg-surface p-8 text-center">
           <p className="text-sm font-semibold">This project is not available</p>
           <p className="mt-1 text-sm text-muted-foreground">
             It may still be waiting for a reviewer to check it.
@@ -71,63 +71,80 @@ function ProjectDetail() {
   const data = project.data;
 
   return (
-    <AppShell>
+    <AppShell width="wide">
       <Link
         to="/"
-        className="m3-state inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-muted-foreground"
+        className="m3-state -ml-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" aria-hidden /> All projects
       </Link>
 
-      <article className="mt-3 space-y-4">
-        <header className="rounded-3xl bg-surface-container p-4 shadow-e1">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusChip status={data.status} />
-            <VerificationChip
-              status={data.verification_status}
-              confidence={data.confidence}
-            />
-          </div>
-          <h1 className="mt-3 text-xl font-semibold leading-snug">{data.name}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{data.plain_summary}</p>
-
-          <dl className="mt-4 space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <MapPin className="size-4 text-muted-foreground" aria-hidden />
-              <dt className="sr-only">Location</dt>
-              <dd>{[data.district, data.state].filter(Boolean).join(", ") || "India"}</dd>
+      {/* The verified record leads; community voice sits alongside it on desktop so the
+          separation the product promises is visible rather than merely stated. */}
+      <article className="mt-4 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="space-y-5">
+          <header>
+            <div className="flex flex-wrap items-center gap-3">
+              <StatusChip status={data.status} />
+              <VerificationChip status={data.verification_status} confidence={data.confidence} />
             </div>
-            <div className="flex items-center gap-2">
-              <Building2 className="size-4 text-muted-foreground" aria-hidden />
-              <dt className="sr-only">Department</dt>
-              <dd>{data.department ?? "Department not listed"}</dd>
-            </div>
-            <div className="flex items-center gap-2">
-              <IndianRupee className="size-4 text-muted-foreground" aria-hidden />
-              <dt className="sr-only">Budget</dt>
-              <dd>{formatBudget(data.budget_inr)} set aside</dd>
-            </div>
-          </dl>
-
-          <p className="mt-3 text-xs text-muted-foreground">
-            Last checked against official records on {formatDate(data.last_verified_at)}.
-          </p>
-        </header>
-
-        {data.details ? (
-          <section className="rounded-3xl bg-surface-container p-4">
-            <h2 className="text-base font-semibold">What this project is</h2>
-            <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
-              {data.details}
+            <h1 className="display-lg mt-4 text-balance">{data.name}</h1>
+            <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+              {data.plain_summary}
             </p>
-          </section>
-        ) : null}
 
-        <VerifiedTimeline project={data} milestones={milestones.data ?? []} />
+            <dl className="mt-6 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
+              {[
+                {
+                  icon: MapPin,
+                  label: "Where",
+                  value: [data.district, data.state].filter(Boolean).join(", ") || "India",
+                },
+                {
+                  icon: Building2,
+                  label: "Responsible body",
+                  value: data.department ?? "Not listed",
+                },
+                {
+                  icon: IndianRupee,
+                  label: "Money set aside",
+                  value: formatBudget(data.budget_inr),
+                },
+              ].map((item) => (
+                <div key={item.label} className="bg-surface p-4">
+                  <dt className="eyebrow flex items-center gap-1.5 text-muted-foreground">
+                    <item.icon className="size-3.5" aria-hidden />
+                    {item.label}
+                  </dt>
+                  <dd data-numeric className="mt-2 text-sm font-medium leading-snug">
+                    {item.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
 
-        <EvidencePanel sources={sources.data ?? []} loading={sources.isLoading} />
+            <p className="mt-3 text-xs text-muted-foreground">
+              Last checked against official records on {formatDate(data.last_verified_at)}.
+            </p>
+          </header>
 
-        <CommunitySection projectId={projectId} />
+          {data.details ? (
+            <section className="border-t border-border pt-5">
+              <h2 className="display-md">What this project is</h2>
+              <p className="mt-3 max-w-2xl whitespace-pre-line leading-relaxed text-muted-foreground">
+                {data.details}
+              </p>
+            </section>
+          ) : null}
+
+          <VerifiedTimeline project={data} milestones={milestones.data ?? []} />
+
+          <EvidencePanel sources={sources.data ?? []} loading={sources.isLoading} />
+        </div>
+
+        <div className="mt-8 lg:mt-0">
+          <CommunitySection projectId={projectId} />
+        </div>
       </article>
     </AppShell>
   );

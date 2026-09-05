@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Browser } from "@capacitor/browser";
+import { Capacitor } from "@capacitor/core";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -7,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppShell } from "@/components/wtf/app-shell";
+import { NATIVE_OAUTH_REDIRECT } from "@/hooks/use-oauth-deeplink";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { appOrigin } from "@/lib/base-path";
@@ -23,8 +26,7 @@ export const Route = createFileRoute("/auth")({
       { property: "og:title", content: "Sign in — We the Future" },
       {
         property: "og:description",
-        content:
-          "Create an account to add your voice to government project reviews in India.",
+        content: "Create an account to add your voice to government project reviews in India.",
       },
     ],
   }),
@@ -66,13 +68,31 @@ function AuthPage() {
 
   const google = async () => {
     setBusy(true);
-    // Supabase redirects the browser to Google and back to redirectTo, so on success
-    // this call navigates away and nothing after it runs.
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: appOrigin() },
-    });
-    if (error) {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        // Google blocks OAuth inside embedded WebViews, and the WebView's origin is a
+        // local one Supabase can never redirect back to. So ask Supabase for the URL
+        // instead of following it, open that in a Chrome Custom Tab, and let
+        // useOAuthDeepLink (mounted in __root) redeem the code the deep link returns.
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: NATIVE_OAUTH_REDIRECT, skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (!data.url) throw new Error("Supabase returned no sign-in URL.");
+        await Browser.open({ url: data.url });
+        setBusy(false);
+        return;
+      }
+
+      // Web: Supabase redirects the browser to Google and back to redirectTo, so on
+      // success this call navigates away and nothing after it runs.
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: appOrigin() },
+      });
+      if (error) throw error;
+    } catch {
       setBusy(false);
       toast.error("Google sign-in did not work. Please try email instead.");
     }
@@ -82,8 +102,8 @@ function AuthPage() {
     return (
       <AppShell>
         <div className="space-y-4">
-          <h1 className="text-xl font-semibold">Your account</h1>
-          <div className="rounded-3xl bg-surface-container p-4">
+          <h1 className="display-lg">Your account</h1>
+          <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-sm text-muted-foreground">Signed in as</p>
             <p className="text-base font-medium">{session.email}</p>
             {session.isReviewer ? (
@@ -114,16 +134,14 @@ function AuthPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-md space-y-4">
-        <h1 className="text-xl font-semibold">
-          {mode === "signin" ? "Sign in" : "Create your account"}
-        </h1>
+        <h1 className="display-lg">{mode === "signin" ? "Sign in" : "Create your account"}</h1>
         <p className="text-sm text-muted-foreground">
-          You only need an account to add your own rating, review or photo. Browsing
-          projects is open to everyone. You can still post anonymously — your name is
-          hidden, your account stays linked privately for moderation.
+          You only need an account to add your own rating, review or photo. Browsing projects is
+          open to everyone. You can still post anonymously — your name is hidden, your account stays
+          linked privately for moderation.
         </p>
 
-        <div className="space-y-3 rounded-3xl bg-surface-container p-4">
+        <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
           <Button
             type="button"
             size="lg"
@@ -144,7 +162,10 @@ function AuthPage() {
           <span className="h-px flex-1 bg-outline" />
         </div>
 
-        <form onSubmit={submit} className="space-y-3 rounded-3xl bg-surface-container p-4">
+        <form
+          onSubmit={submit}
+          className="space-y-3 rounded-xl border border-border bg-surface p-4"
+        >
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -153,7 +174,7 @@ function AuthPage() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="rounded-2xl bg-surface-container-high"
+              className="rounded-lg bg-surface-container-high"
             />
           </div>
           <div className="space-y-1.5">
@@ -165,7 +186,7 @@ function AuthPage() {
               minLength={6}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="rounded-2xl bg-surface-container-high"
+              className="rounded-lg bg-surface-container-high"
             />
           </div>
           <Button type="submit" disabled={busy} className="w-full rounded-full">
@@ -178,9 +199,7 @@ function AuthPage() {
           className="text-sm text-primary underline underline-offset-4"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
         >
-          {mode === "signin"
-            ? "New here? Create an account"
-            : "Already have an account? Sign in"}
+          {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
         </button>
       </div>
     </AppShell>

@@ -30,12 +30,7 @@ import {
 } from "@/lib/queries";
 import { MODERATION_STATE_LABEL, moderateImageMeta, moderateText } from "@/lib/moderation";
 import { cn } from "@/lib/utils";
-import {
-  CONDITION_CLASS,
-  CONDITION_LABEL,
-  formatDate,
-  type ConditionRating,
-} from "@/lib/wtf";
+import { CONDITION_CLASS, CONDITION_LABEL, formatDate, type ConditionRating } from "@/lib/wtf";
 
 const ANONYMOUS_LABEL = "Verified local resident";
 
@@ -66,7 +61,7 @@ function ReviewImageTile({ image }: { image: ReviewImage }) {
   const blurred = image.moderation_state === "blurred" && !revealed;
 
   return (
-    <figure className="overflow-hidden rounded-2xl bg-surface-container-highest">
+    <figure className="overflow-hidden rounded-lg bg-surface-container-highest">
       <div className="relative">
         <img
           src={image.image_url}
@@ -121,12 +116,8 @@ export function CommunitySection({ projectId }: { projectId: string }) {
 
   const preview = useMemo(() => (body.trim() ? moderateText(body) : null), [body]);
 
-  const visible = (reviews.data ?? []).filter(
-    (review) => review.moderation_state === "visible",
-  );
-  const publicHasMine = existing
-    ? visible.some((review) => review.id === existing.id)
-    : false;
+  const visible = (reviews.data ?? []).filter((review) => review.moderation_state === "visible");
+  const publicHasMine = existing ? visible.some((review) => review.id === existing.id) : false;
   const conditionCounts = visible.reduce(
     (acc, review) => {
       if (review.condition) {
@@ -218,19 +209,16 @@ export function CommunitySection({ projectId }: { projectId: string }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const imagesByReview = (images.data ?? []).reduce<Record<string, ReviewImage[]>>(
-    (acc, image) => {
-      (acc[image.review_id] ??= []).push(image);
-      return acc;
-    },
-    {},
-  );
+  const imagesByReview = (images.data ?? []).reduce<Record<string, ReviewImage[]>>((acc, image) => {
+    (acc[image.review_id] ??= []).push(image);
+    return acc;
+  }, {});
 
   const renderReview = (
     review: Review,
     options: { mine?: boolean; tiles?: ReviewImage[] } = {},
   ) => (
-    <li key={review.id} className="rounded-2xl bg-surface-container p-4">
+    <li key={review.id} className="rounded-lg bg-surface-container p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <Stars value={review.rating} />
@@ -287,43 +275,42 @@ export function CommunitySection({ projectId }: { projectId: string }) {
   return (
     <section
       aria-labelledby="community-heading"
-      className="rounded-3xl border border-dashed border-outline bg-surface p-4"
+      className="rounded-xl border border-dashed border-outline bg-surface p-4"
     >
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-tertiary-container text-tertiary-container-foreground">
           <MessageSquare className="size-4.5" aria-hidden />
         </span>
         <div>
-          <h2 id="community-heading" className="text-base font-semibold">
+          <h2 id="community-heading" className="display-sm">
             What people say
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Opinions, ratings and photos from the public. These are not checked facts
-            and never change the official record above.
+            Opinions, ratings and photos from the public. These are not checked facts and never
+            change the official record above.
           </p>
         </div>
       </div>
 
       {average != null ? (
-        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-surface-container-high p-3">
+        <div className="mt-4 flex items-center gap-3 rounded-lg bg-surface-container-high p-3">
           <span className="text-2xl font-semibold">{average.toFixed(1)}</span>
           <div>
             <Stars value={Math.round(average)} />
             <p className="text-xs text-muted-foreground">
-              {visible.length} {visible.length === 1 ? "review" : "reviews"} from the
-              public
+              {visible.length} {visible.length === 1 ? "review" : "reviews"} from the public
             </p>
           </div>
         </div>
       ) : null}
 
       {conditionCounts.total > 0 ? (
-        <div className="mt-3 rounded-2xl bg-surface-container-high p-3">
+        <div className="mt-3 rounded-lg bg-surface-container-high p-3">
           <h3 className="text-sm font-semibold">Current community-reported outcome</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
             What {conditionCounts.total}{" "}
-            {conditionCounts.total === 1 ? "person says" : "people say"} the work looks
-            like today. This is opinion, not an official finding.
+            {conditionCounts.total === 1 ? "person says" : "people say"} the work looks like today.
+            This is opinion, not an official finding.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {(["good", "mixed", "poor"] as ConditionRating[]).map((option) => (
@@ -343,16 +330,11 @@ export function CommunitySection({ projectId }: { projectId: string }) {
         </div>
       ) : null}
 
-
-
       <ul className="mt-4 space-y-3">
-        {visible.map((review) =>
-          renderReview(review, { mine: existing?.id === review.id }),
-        )}
+        {visible.map((review) => renderReview(review, { mine: existing?.id === review.id }))}
         {visible.length === 0 ? (
-          <li className="rounded-2xl bg-surface-container p-4 text-sm text-muted-foreground">
-            No public reviews yet. Be the first to say what this project is like on the
-            ground.
+          <li className="rounded-lg bg-surface-container p-4 text-sm text-muted-foreground">
+            No public reviews yet. Be the first to say what this project is like on the ground.
           </li>
         ) : null}
       </ul>
@@ -366,13 +348,11 @@ export function CommunitySection({ projectId }: { projectId: string }) {
         </div>
       ) : null}
 
-      <div className="mt-5 rounded-2xl bg-surface-container p-4">
-        <h3 className="text-sm font-semibold">
-          {existing ? "Your review" : "Add your review"}
-        </h3>
+      <div className="mt-5 rounded-lg bg-surface-container p-4">
+        <h3 className="text-sm font-semibold">{existing ? "Your review" : "Add your review"}</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          One review per account for each project, so ratings stay fair. You can edit
-          yours any time.
+          One review per account for each project, so ratings stay fair. You can edit yours any
+          time.
         </p>
 
         {session.loading ? (
@@ -380,8 +360,8 @@ export function CommunitySection({ projectId }: { projectId: string }) {
         ) : !session.userId ? (
           <div className="mt-3 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Sign in to rate this project, write a review or share a photo. It takes one
-              tap with Google.
+              Sign in to rate this project, write a review or share a photo. It takes one tap with
+              Google.
             </p>
             <Button asChild className="w-full rounded-full">
               <Link to="/auth">Continue with Google or email</Link>
@@ -393,11 +373,7 @@ export function CommunitySection({ projectId }: { projectId: string }) {
               You rated this {existing!.rating} out of 5
               {existing!.is_anonymous ? ", posted anonymously." : "."}
             </p>
-            <Button
-              variant="outline"
-              className="rounded-full"
-              onClick={() => setEditing(true)}
-            >
+            <Button variant="outline" className="rounded-full" onClick={() => setEditing(true)}>
               <Pencil className="mr-1.5 size-4" aria-hidden /> Edit your review
             </Button>
           </div>
@@ -410,33 +386,31 @@ export function CommunitySection({ projectId }: { projectId: string }) {
             }}
           >
             <div>
-            <div>
-              <span className="text-xs text-muted-foreground">
-                How is it holding up today?
-              </span>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {(["good", "mixed", "poor"] as ConditionRating[]).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() =>
-                      setCondition((current) => (current === option ? null : option))
-                    }
-                    aria-pressed={condition === option}
-                    className={cn(
-                      "m3-state rounded-full border px-3 py-1.5 text-sm font-medium",
-                      condition === option
-                        ? cn(CONDITION_CLASS[option], "border-transparent")
-                        : "border-outline text-muted-foreground",
-                    )}
-                  >
-                    {CONDITION_LABEL[option]}
-                  </button>
-                ))}
+              <div>
+                <span className="text-xs text-muted-foreground">How is it holding up today?</span>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {(["good", "mixed", "poor"] as ConditionRating[]).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() =>
+                        setCondition((current) => (current === option ? null : option))
+                      }
+                      aria-pressed={condition === option}
+                      className={cn(
+                        "m3-state rounded-full border px-3 py-1.5 text-sm font-medium",
+                        condition === option
+                          ? cn(CONDITION_CLASS[option], "border-transparent")
+                          : "border-outline text-muted-foreground",
+                      )}
+                    >
+                      {CONDITION_LABEL[option]}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <span className="text-xs text-muted-foreground">Your rating</span>
+              <span className="text-xs text-muted-foreground">Your rating</span>
               <div className="mt-1 flex gap-1">
                 {[1, 2, 3, 4, 5].map((value) => (
                   <button
@@ -449,9 +423,7 @@ export function CommunitySection({ projectId }: { projectId: string }) {
                     <Star
                       className={cn(
                         "size-6",
-                        value <= rating
-                          ? "fill-current text-tertiary"
-                          : "text-muted-foreground/40",
+                        value <= rating ? "fill-current text-tertiary" : "text-muted-foreground/40",
                       )}
                     />
                   </button>
@@ -465,19 +437,15 @@ export function CommunitySection({ projectId }: { projectId: string }) {
               placeholder="What is this project like where you live?"
               rows={4}
               maxLength={1000}
-              className="rounded-2xl bg-surface-container-high"
+              className="rounded-lg bg-surface-container-high"
             />
 
-            <div className="rounded-2xl bg-surface-container-high p-3">
+            <div className="rounded-lg bg-surface-container-high p-3">
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="anonymous" className="text-sm font-medium">
                   Post anonymously
                 </Label>
-                <Switch
-                  id="anonymous"
-                  checked={anonymous}
-                  onCheckedChange={setAnonymous}
-                />
+                <Switch id="anonymous" checked={anonymous} onCheckedChange={setAnonymous} />
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground">
                 {anonymous
@@ -487,7 +455,7 @@ export function CommunitySection({ projectId }: { projectId: string }) {
             </div>
 
             {preview && preview.action !== "allow" ? (
-              <div className="rounded-2xl bg-tertiary-container p-3 text-xs text-tertiary-container-foreground">
+              <div className="rounded-lg bg-tertiary-container p-3 text-xs text-tertiary-container-foreground">
                 <p className="font-semibold">
                   {preview.action === "mask"
                     ? "Some words will be masked"
@@ -509,13 +477,13 @@ export function CommunitySection({ projectId }: { projectId: string }) {
                 value={imageUrl}
                 onChange={(event) => setImageUrl(event.target.value)}
                 placeholder="Photo link (optional)"
-                className="rounded-2xl bg-surface-container-high"
+                className="rounded-lg bg-surface-container-high"
               />
               <Input
                 value={caption}
                 onChange={(event) => setCaption(event.target.value)}
                 placeholder="Photo caption (optional)"
-                className="rounded-2xl bg-surface-container-high"
+                className="rounded-lg bg-surface-container-high"
               />
             </div>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -524,16 +492,8 @@ export function CommunitySection({ projectId }: { projectId: string }) {
             </p>
 
             <div className="flex gap-2">
-              <Button
-                type="submit"
-                disabled={submit.isPending}
-                className="flex-1 rounded-full"
-              >
-                {submit.isPending
-                  ? "Sending…"
-                  : existing
-                    ? "Save changes"
-                    : "Post review"}
+              <Button type="submit" disabled={submit.isPending} className="flex-1 rounded-full">
+                {submit.isPending ? "Sending…" : existing ? "Save changes" : "Post review"}
               </Button>
               {existing ? (
                 <Button

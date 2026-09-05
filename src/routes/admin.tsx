@@ -2,14 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  BadgeCheck,
-  Bot,
-  ExternalLink,
-  ShieldAlert,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
+import { BadgeCheck, Bot, ExternalLink, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -21,12 +14,7 @@ import { useSession } from "@/hooks/use-session";
 import { runResearchAgent } from "@/lib/agent.functions";
 import { IS_STATIC_DEPLOY } from "@/lib/base-path";
 import { MODERATION_STATE_LABEL } from "@/lib/moderation";
-import {
-  candidatesQuery,
-  moderationQueueQuery,
-  projectsQuery,
-  wtfDb,
-} from "@/lib/queries";
+import { candidatesQuery, moderationQueueQuery, projectsQuery, wtfDb } from "@/lib/queries";
 import { SOURCE_TYPE_LABEL, confidencePercent, formatDate } from "@/lib/wtf";
 
 export const Route = createFileRoute("/admin")({
@@ -266,12 +254,11 @@ function AdminPage() {
   if (!session.isReviewer) {
     return (
       <AppShell>
-        <div className="rounded-3xl bg-surface-container p-6 text-center">
+        <div className="rounded-xl border border-border bg-surface p-6 text-center">
           <ShieldCheck className="mx-auto size-8 text-muted-foreground" aria-hidden />
           <h1 className="mt-3 text-base font-semibold">Reviewer access only</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            This desk is for the people who check official records before anything is
-            published.
+            This desk is for the people who check official records before anything is published.
           </p>
           <Link
             to="/"
@@ -293,7 +280,7 @@ function AdminPage() {
 
   return (
     <AppShell>
-      <h1 className="text-xl font-semibold">Reviewer desk</h1>
+      <h1 className="display-lg">Reviewer desk</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Nothing reaches the public as a verified fact until you approve it here.
       </p>
@@ -315,17 +302,16 @@ function AdminPage() {
         </TabsList>
 
         <TabsContent value="candidates" className="mt-4 space-y-3">
-          <div className="rounded-3xl bg-surface-container-high p-4">
+          <div className="rounded-xl border border-border bg-surface-container-high p-4">
             <p className="flex items-center gap-2 text-sm font-semibold">
               <Bot className="size-4" aria-hidden /> Research agent
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              The agent searches official portals, keeps every citation and drops
-              anything without an official source. Its findings arrive here as
-              candidates, never as published facts.
+              The agent searches official portals, keeps every citation and drops anything without
+              an official source. Its findings arrive here as candidates, never as published facts.
             </p>
             {IS_STATIC_DEPLOY ? (
-              <p className="mt-3 rounded-2xl bg-surface-container p-3 text-sm text-muted-foreground">
+              <p className="mt-3 rounded-lg bg-surface-container p-3 text-sm text-muted-foreground">
                 The agent needs a server to call the AI gateway, so it cannot run on this static
                 build. Everything else on this page — reviewing, approving and publishing candidates
                 — works as usual.
@@ -336,7 +322,7 @@ function AdminPage() {
                   value={focus}
                   onChange={(event) => setFocus(event.target.value)}
                   placeholder="What should the agent look for?"
-                  className="rounded-2xl bg-surface-container"
+                  className="rounded-lg bg-surface-container"
                 />
                 <Button
                   onClick={() => runAgent.mutate()}
@@ -350,7 +336,7 @@ function AdminPage() {
           </div>
 
           {pendingCandidates.length === 0 ? (
-            <p className="rounded-3xl bg-surface-container p-4 text-sm text-muted-foreground">
+            <p className="rounded-xl border border-border bg-surface p-4 text-sm text-muted-foreground">
               {IS_STATIC_DEPLOY
                 ? "The queue is empty."
                 : "The queue is empty. Run the agent to look for new projects."}
@@ -358,7 +344,7 @@ function AdminPage() {
           ) : null}
 
           {pendingCandidates.map((candidate) => (
-            <article key={candidate.id} className="rounded-3xl bg-surface-container p-4">
+            <article key={candidate.id} className="rounded-xl border border-border bg-surface p-4">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="rounded-full bg-surface-container-highest px-2 py-0.5 font-medium">
                   {candidate.review_state.replaceAll("_", " ")}
@@ -368,9 +354,7 @@ function AdminPage() {
                 </span>
               </div>
               <h2 className="mt-2 text-base font-semibold">{candidate.name}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {candidate.plain_summary}
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{candidate.plain_summary}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {[candidate.district, candidate.state, candidate.department]
                   .filter(Boolean)
@@ -381,7 +365,7 @@ function AdminPage() {
                 {candidate.citations.map((citation, index) => (
                   <li
                     key={`${candidate.id}-${index}`}
-                    className="rounded-2xl bg-surface-container-high p-3 text-sm"
+                    className="rounded-lg bg-surface-container-high p-3 text-sm"
                   >
                     <p className="label-sm text-muted-foreground">
                       {SOURCE_TYPE_LABEL[citation.source_type]}
@@ -395,9 +379,7 @@ function AdminPage() {
                       {citation.title}
                       <ExternalLink className="size-3.5" aria-hidden />
                     </a>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      “{citation.evidence}”
-                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">“{citation.evidence}”</p>
                   </li>
                 ))}
               </ul>
@@ -421,9 +403,7 @@ function AdminPage() {
                   size="sm"
                   variant="outline"
                   className="rounded-full"
-                  onClick={() =>
-                    setCandidateState.mutate({ id: candidate.id, state: "in_review" })
-                  }
+                  onClick={() => setCandidateState.mutate({ id: candidate.id, state: "in_review" })}
                 >
                   Mark in review
                 </Button>
@@ -431,9 +411,7 @@ function AdminPage() {
                   size="sm"
                   variant="ghost"
                   className="rounded-full"
-                  onClick={() =>
-                    setCandidateState.mutate({ id: candidate.id, state: "rejected" })
-                  }
+                  onClick={() => setCandidateState.mutate({ id: candidate.id, state: "rejected" })}
                 >
                   Reject
                 </Button>
@@ -443,20 +421,20 @@ function AdminPage() {
         </TabsContent>
 
         <TabsContent value="community" className="mt-4 space-y-3">
-          <p className="rounded-3xl bg-tertiary-container p-4 text-sm text-tertiary-container-foreground">
-            Sent in by members of the public, often about older work that records
-            already closed. Listing one shows it as community-reported and awaiting a
-            check — never as a verified government fact.
+          <p className="rounded-xl bg-tertiary-container p-4 text-sm text-tertiary-container-foreground">
+            Sent in by members of the public, often about older work that records already closed.
+            Listing one shows it as community-reported and awaiting a check — never as a verified
+            government fact.
           </p>
 
           {communityQueue.length === 0 ? (
-            <p className="rounded-3xl bg-surface-container p-4 text-sm text-muted-foreground">
+            <p className="rounded-xl border border-border bg-surface p-4 text-sm text-muted-foreground">
               Nothing waiting from the public right now.
             </p>
           ) : null}
 
           {communityQueue.map((candidate) => (
-            <article key={candidate.id} className="rounded-3xl bg-surface-container p-4">
+            <article key={candidate.id} className="rounded-xl border border-border bg-surface p-4">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-surface-container-highest px-2 py-0.5 font-medium">
                   <Users className="size-3" aria-hidden />
@@ -484,13 +462,11 @@ function AdminPage() {
               </p>
 
               {candidate.plain_summary ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {candidate.plain_summary}
-                </p>
+                <p className="mt-2 text-sm text-muted-foreground">{candidate.plain_summary}</p>
               ) : null}
 
               {candidate.observed_condition ? (
-                <div className="mt-2 rounded-2xl bg-surface-container-high p-3">
+                <div className="mt-2 rounded-lg bg-surface-container-high p-3">
                   <p className="label-sm text-muted-foreground">Condition reported</p>
                   <p className="mt-1 text-sm">{candidate.observed_condition}</p>
                 </div>
@@ -528,7 +504,7 @@ function AdminPage() {
                     .map((photo, index) => (
                       <figure
                         key={`${candidate.id}-p-${index}`}
-                        className="overflow-hidden rounded-2xl bg-surface-container-highest"
+                        className="overflow-hidden rounded-lg bg-surface-container-highest"
                       >
                         <img
                           src={photo.url}
@@ -552,16 +528,13 @@ function AdminPage() {
                   disabled={publishCommunity.isPending}
                   onClick={() => publishCommunity.mutate(candidate.id)}
                 >
-                  <BadgeCheck className="mr-1.5 size-4" aria-hidden /> List as
-                  community-reported
+                  <BadgeCheck className="mr-1.5 size-4" aria-hidden /> List as community-reported
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   className="rounded-full"
-                  onClick={() =>
-                    setCandidateState.mutate({ id: candidate.id, state: "in_review" })
-                  }
+                  onClick={() => setCandidateState.mutate({ id: candidate.id, state: "in_review" })}
                 >
                   Mark in review
                 </Button>
@@ -569,9 +542,7 @@ function AdminPage() {
                   size="sm"
                   variant="ghost"
                   className="rounded-full"
-                  onClick={() =>
-                    setCandidateState.mutate({ id: candidate.id, state: "rejected" })
-                  }
+                  onClick={() => setCandidateState.mutate({ id: candidate.id, state: "rejected" })}
                 >
                   Reject
                 </Button>
@@ -582,7 +553,7 @@ function AdminPage() {
 
         <TabsContent value="projects" className="mt-4 space-y-3">
           {(projects.data ?? []).map((project) => (
-            <article key={project.id} className="rounded-3xl bg-surface-container p-4">
+            <article key={project.id} className="rounded-xl border border-border bg-surface p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusChip status={project.status} />
                 <VerificationChip
@@ -646,12 +617,12 @@ function AdminPage() {
 
         <TabsContent value="moderation" className="mt-4 space-y-3">
           {(flagged.data ?? []).length === 0 ? (
-            <p className="rounded-3xl bg-surface-container p-4 text-sm text-muted-foreground">
+            <p className="rounded-xl border border-border bg-surface p-4 text-sm text-muted-foreground">
               Nothing is waiting. Flagged reviews and photos appear here.
             </p>
           ) : null}
           {(flagged.data ?? []).map((review) => (
-            <article key={review.id} className="rounded-3xl bg-surface-container p-4">
+            <article key={review.id} className="rounded-xl border border-border bg-surface p-4">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-tertiary-container px-2 py-0.5 text-tertiary-container-foreground">
                   <ShieldAlert className="size-3" aria-hidden />

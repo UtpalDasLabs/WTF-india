@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { BASE_PATH, publicAsset } from "../lib/base-path";
 import { Toaster } from "@/components/ui/sonner";
+import { useOAuthDeepLink } from "@/hooks/use-oauth-deeplink";
 
 function NotFoundComponent() {
   return (
@@ -93,8 +94,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "We the Future" },
       {
         property: "og:description",
-        content:
-          "Government projects near you in India, checked against official records.",
+        content: "Government projects near you in India, checked against official records.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -131,6 +131,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useOAuthDeepLink();
 
   return (
     <QueryClientProvider client={queryClient}>

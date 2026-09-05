@@ -11,11 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { AppShell } from "@/components/wtf/app-shell";
 import { useSession } from "@/hooks/use-session";
-import {
-  MODERATION_STATE_LABEL,
-  moderateImageMeta,
-  moderateText,
-} from "@/lib/moderation";
+import { MODERATION_STATE_LABEL, moderateImageMeta, moderateText } from "@/lib/moderation";
 import { mySubmissionsQuery, wtfDb, type CandidatePhoto } from "@/lib/queries";
 import { SUGGEST_CATEGORIES, formatDate } from "@/lib/wtf";
 import { cn } from "@/lib/utils";
@@ -74,8 +70,7 @@ function SuggestPage() {
     mutationFn: async () => {
       if (!session.userId) throw new Error("Please sign in first.");
       if (name.trim().length < 5) throw new Error("Please give the project a name.");
-      if (locationText.trim().length < 3)
-        throw new Error("Please say where this project is.");
+      if (locationText.trim().length < 3) throw new Error("Please say where this project is.");
       if (condition.trim().length < 15)
         throw new Error("Please describe what the project looks like today.");
 
@@ -138,8 +133,7 @@ function SuggestPage() {
         moderation_label:
           conditionCheck.action !== "allow" ? conditionCheck.label : summaryCheck.label,
         moderation_state: worst === "hold" ? "held" : "visible",
-        moderation_notes:
-          worst === "hold" ? conditionCheck.reason || summaryCheck.reason : null,
+        moderation_notes: worst === "hold" ? conditionCheck.reason || summaryCheck.reason : null,
       });
       if (error) throw new Error(error.message);
       return worst;
@@ -176,31 +170,28 @@ function SuggestPage() {
 
   return (
     <AppShell>
-      <h1 className="text-xl font-semibold">Suggest a project</h1>
+      <h1 className="display-lg">Suggest a project</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Know a government project that is missing here? Tell us about it. This includes
-        older work that official records closed years ago but that is in poor shape
-        today.
+        Know a government project that is missing here? Tell us about it. This includes older work
+        that official records closed years ago but that is in poor shape today.
       </p>
 
-      <div className="mt-4 flex items-start gap-2 rounded-3xl bg-tertiary-container p-4 text-sm text-tertiary-container-foreground">
+      <div className="mt-4 flex items-start gap-2 rounded-xl bg-tertiary-container p-4 text-sm text-tertiary-container-foreground">
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
         <p>
-          Anything you send is a community submission, not a verified government fact.
-          It stays out of the public list until a reviewer checks it against official
-          records.
+          Anything you send is a community submission, not a verified government fact. It stays out
+          of the public list until a reviewer checks it against official records.
         </p>
       </div>
 
       {session.loading ? (
         <p className="mt-4 text-sm text-muted-foreground">Checking your account…</p>
       ) : !session.userId ? (
-        <div className="mt-4 space-y-3 rounded-3xl bg-surface-container p-4">
+        <div className="mt-4 space-y-3 rounded-xl border border-border bg-surface p-4">
           <p className="text-sm font-semibold">Sign in to send a submission</p>
           <p className="text-sm text-muted-foreground">
-            We ask for an account so reviewers can follow up and so the same report
-            cannot be sent hundreds of times. You can still choose to appear
-            anonymously in public.
+            We ask for an account so reviewers can follow up and so the same report cannot be sent
+            hundreds of times. You can still choose to appear anonymously in public.
           </p>
           <Button asChild className="w-full rounded-full">
             <Link to="/auth">Continue with Google or email</Link>
@@ -208,7 +199,7 @@ function SuggestPage() {
         </div>
       ) : (
         <form
-          className="mt-4 space-y-3 rounded-3xl bg-surface-container p-4"
+          className="mt-4 space-y-3 rounded-xl border border-border bg-surface p-4"
           onSubmit={(event) => {
             event.preventDefault();
             submit.mutate();
@@ -224,7 +215,7 @@ function SuggestPage() {
               onChange={(event) => setName(event.target.value)}
               maxLength={160}
               placeholder="For example: Ghantaghar to Jajmau road widening"
-              className="mt-1 rounded-2xl bg-surface-container-high"
+              className="mt-1 rounded-lg bg-surface-container-high"
             />
           </div>
 
@@ -236,7 +227,7 @@ function SuggestPage() {
               id="s-category"
               value={category}
               onChange={(event) => setCategory(event.target.value)}
-              className="mt-1 h-11 w-full rounded-2xl bg-surface-container-high px-3 text-sm"
+              className="mt-1 h-11 w-full rounded-lg bg-surface-container-high px-3 text-sm"
             >
               {SUGGEST_CATEGORIES.map((option) => (
                 <option key={option} value={option}>
@@ -256,7 +247,7 @@ function SuggestPage() {
               onChange={(event) => setLocationText(event.target.value)}
               maxLength={200}
               placeholder="Street, area and landmark"
-              className="mt-1 rounded-2xl bg-surface-container-high"
+              className="mt-1 rounded-lg bg-surface-container-high"
             />
           </div>
 
@@ -266,7 +257,7 @@ function SuggestPage() {
               onChange={(event) => setDistrict(event.target.value)}
               maxLength={80}
               placeholder="District or city"
-              className="rounded-2xl bg-surface-container-high"
+              className="rounded-lg bg-surface-container-high"
               aria-label="District or city"
             />
             <Input
@@ -274,7 +265,7 @@ function SuggestPage() {
               onChange={(event) => setState(event.target.value)}
               maxLength={80}
               placeholder="State"
-              className="rounded-2xl bg-surface-container-high"
+              className="rounded-lg bg-surface-container-high"
               aria-label="State"
             />
           </div>
@@ -284,7 +275,7 @@ function SuggestPage() {
             onChange={(event) => setDepartment(event.target.value)}
             maxLength={120}
             placeholder="Department or body responsible (optional)"
-            className="rounded-2xl bg-surface-container-high"
+            className="rounded-lg bg-surface-container-high"
             aria-label="Department"
           />
 
@@ -299,7 +290,7 @@ function SuggestPage() {
               rows={3}
               maxLength={1000}
               placeholder="In your own words, in plain English"
-              className="mt-1 rounded-2xl bg-surface-container-high"
+              className="mt-1 rounded-lg bg-surface-container-high"
             />
           </div>
 
@@ -314,7 +305,7 @@ function SuggestPage() {
               rows={4}
               maxLength={1000}
               placeholder="Describe what you see now: potholes, standing water, unused rooms, broken lights"
-              className="mt-1 rounded-2xl bg-surface-container-high"
+              className="mt-1 rounded-lg bg-surface-container-high"
             />
           </div>
 
@@ -328,7 +319,7 @@ function SuggestPage() {
                 type="date"
                 value={completion}
                 onChange={(event) => setCompletion(event.target.value)}
-                className="mt-1 rounded-2xl bg-surface-container-high"
+                className="mt-1 rounded-lg bg-surface-container-high"
               />
             </div>
             <div>
@@ -341,7 +332,7 @@ function SuggestPage() {
                 onChange={(event) => setDateNote(event.target.value)}
                 maxLength={120}
                 placeholder="Around 2019, before the floods"
-                className="mt-1 rounded-2xl bg-surface-container-high"
+                className="mt-1 rounded-lg bg-surface-container-high"
               />
             </div>
           </div>
@@ -351,7 +342,7 @@ function SuggestPage() {
             onChange={(event) => setSourceUrl(event.target.value)}
             maxLength={500}
             placeholder="Official link or notice, if you have one (optional)"
-            className="rounded-2xl bg-surface-container-high"
+            className="rounded-lg bg-surface-container-high"
             aria-label="Official source link"
           />
 
@@ -361,7 +352,7 @@ function SuggestPage() {
               onChange={(event) => setImageUrl(event.target.value)}
               maxLength={500}
               placeholder="Photo link (optional)"
-              className="rounded-2xl bg-surface-container-high"
+              className="rounded-lg bg-surface-container-high"
               aria-label="Photo link"
             />
             <Input
@@ -369,17 +360,17 @@ function SuggestPage() {
               onChange={(event) => setCaption(event.target.value)}
               maxLength={200}
               placeholder="Photo caption (optional)"
-              className="rounded-2xl bg-surface-container-high"
+              className="rounded-lg bg-surface-container-high"
               aria-label="Photo caption"
             />
           </div>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <ImagePlus className="size-3.5" aria-hidden />
-            Photos stay blurred until the safety check and a reviewer clear them. Please
-            do not include number plates, faces of children, or anyone's documents.
+            Photos stay blurred until the safety check and a reviewer clear them. Please do not
+            include number plates, faces of children, or anyone's documents.
           </p>
 
-          <div className="rounded-2xl bg-surface-container-high p-3">
+          <div className="rounded-lg bg-surface-container-high p-3">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="s-anon" className="text-sm font-medium">
                 Post anonymously
@@ -395,7 +386,7 @@ function SuggestPage() {
           </div>
 
           {preview && preview.action !== "allow" ? (
-            <div className="rounded-2xl bg-tertiary-container p-3 text-xs text-tertiary-container-foreground">
+            <div className="rounded-lg bg-tertiary-container p-3 text-xs text-tertiary-container-foreground">
               <p className="font-semibold">
                 {preview.action === "mask"
                   ? "Some words will be masked"
@@ -407,11 +398,7 @@ function SuggestPage() {
             </div>
           ) : null}
 
-          <Button
-            type="submit"
-            disabled={submit.isPending}
-            className="w-full rounded-full"
-          >
+          <Button type="submit" disabled={submit.isPending} className="w-full rounded-full">
             <Send className="mr-1.5 size-4" aria-hidden />
             {submit.isPending ? "Sending…" : "Send to the reviewer queue"}
           </Button>
@@ -420,15 +407,15 @@ function SuggestPage() {
 
       {session.userId ? (
         <section className="mt-6">
-          <h2 className="text-base font-semibold">Your submissions</h2>
+          <h2 className="display-sm">Your submissions</h2>
           {(mine.data ?? []).length === 0 ? (
-            <p className="mt-2 rounded-3xl bg-surface-container p-4 text-sm text-muted-foreground">
+            <p className="mt-2 rounded-xl border border-border bg-surface p-4 text-sm text-muted-foreground">
               Nothing yet. Anything you send appears here with its progress.
             </p>
           ) : (
             <ul className="mt-2 space-y-3">
               {(mine.data ?? []).map((item) => (
-                <li key={item.id} className="rounded-3xl bg-surface-container p-4">
+                <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span
                       className={cn(
@@ -469,9 +456,7 @@ function SuggestPage() {
                     {[item.category, item.location_text].filter(Boolean).join(" · ")}
                   </p>
                   {item.observed_condition ? (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {item.observed_condition}
-                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">{item.observed_condition}</p>
                   ) : null}
                   {item.published_project_id ? (
                     <Link

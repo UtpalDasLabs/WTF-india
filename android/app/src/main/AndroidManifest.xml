@@ -22,6 +22,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Google sign-in happens in a Chrome Custom Tab, because Google refuses
+                 OAuth inside an embedded WebView. This filter is what brings the
+                 redirect back into the app: Supabase sends the browser to
+                 in.wethefuture.wtf://auth/callback?code=... and Android hands that to
+                 MainActivity, where useOAuthDeepLink exchanges the code for a session.
+                 The scheme is Capacitor's own custom_url_scheme (= the appId). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/custom_url_scheme" />
+            </intent-filter>
+
         </activity>
 
         <provider

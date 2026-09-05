@@ -5,6 +5,32 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * Self-hosted so the Android APK renders correctly with no network, and so the
+ * first paint never waits on a third party. Latin subsets only.
+ */
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/newsreader-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Newsreader";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/newsreader-latin-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/inter-latin.woff2") format("woff2");
+}
+
+/*
  * We the Future — Material 3 inspired design system.
  * Tonal palette: deep indigo primary, saffron tertiary, ink neutrals.
  * All colours are oklch and exposed as semantic tokens only.
@@ -18,8 +44,10 @@
   --radius-2xl: calc(var(--radius) + 16px);
   --radius-3xl: calc(var(--radius) + 24px);
 
-  --font-display: "Roboto Flex", "Roboto", system-ui, sans-serif;
-  --font-sans: "Roboto Flex", "Roboto", system-ui, sans-serif;
+  /* Newsreader carries the editorial voice; Inter carries the interface and data. */
+  --font-display: "Newsreader", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -57,6 +85,11 @@
   --color-ring: var(--primary);
   --color-ring-offset-background: var(--background);
 
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-line: var(--ink-line);
+
   --color-status-planned: var(--status-planned);
   --color-status-planned-container: var(--status-planned-container);
   --color-status-ongoing: var(--status-ongoing);
@@ -68,20 +101,26 @@
   --color-status-early: var(--status-early);
   --color-status-early-container: var(--status-early-container);
 
-  --shadow-e1: 0 1px 2px 0 oklch(0.2 0.05 265 / 0.14), 0 1px 3px 1px oklch(0.2 0.05 265 / 0.08);
-  --shadow-e2: 0 1px 2px 0 oklch(0.2 0.05 265 / 0.16), 0 2px 6px 2px oklch(0.2 0.05 265 / 0.1);
-  --shadow-e3: 0 4px 8px 3px oklch(0.2 0.05 265 / 0.12), 0 1px 3px 0 oklch(0.2 0.05 265 / 0.18);
+  --shadow-e1: 0 1px 2px oklch(0.25 0.03 265 / 0.05);
+  --shadow-e2: 0 1px 3px oklch(0.25 0.03 265 / 0.07), 0 6px 16px -8px oklch(0.25 0.03 265 / 0.12);
+  --shadow-e3: 0 2px 6px oklch(0.25 0.03 265 / 0.08), 0 16px 40px -12px oklch(0.25 0.03 265 / 0.18);
 }
 
 :root {
-  --radius: 1rem;
+  --radius: 0.625rem;
 
-  --background: oklch(0.985 0.008 275);
-  --foreground: oklch(0.21 0.03 272);
-  --surface: oklch(0.985 0.008 275);
-  --surface-container: oklch(0.955 0.012 275);
-  --surface-container-high: oklch(0.928 0.016 275);
-  --surface-container-highest: oklch(0.905 0.019 275);
+  --background: oklch(0.972 0.004 270);
+  --foreground: oklch(0.17 0.018 268);
+  --surface: oklch(1 0 0);
+  --surface-container: oklch(1 0 0);
+  --surface-container-high: oklch(0.965 0.005 270);
+  --surface-container-highest: oklch(0.94 0.008 270);
+
+  /* Inverted sections: masthead, hero, footer. */
+  --ink: oklch(0.19 0.028 268);
+  --ink-foreground: oklch(0.97 0.004 270);
+  --ink-muted: oklch(0.72 0.015 270);
+  --ink-line: oklch(0.31 0.025 268);
 
   --primary: oklch(0.44 0.14 272);
   --primary-foreground: oklch(0.99 0.005 275);
@@ -98,10 +137,10 @@
   --tertiary-container: oklch(0.93 0.06 76);
   --tertiary-container-foreground: oklch(0.35 0.1 62);
 
-  --muted: oklch(0.925 0.014 275);
-  --muted-foreground: oklch(0.5 0.025 272);
-  --outline: oklch(0.62 0.02 272);
-  --outline-variant: oklch(0.86 0.014 275);
+  --muted: oklch(0.955 0.005 270);
+  --muted-foreground: oklch(0.46 0.018 268);
+  --outline: oklch(0.72 0.014 270);
+  --outline-variant: oklch(0.9 0.008 270);
 
   --destructive: oklch(0.51 0.19 27);
   --destructive-foreground: oklch(0.99 0.004 27);
@@ -121,12 +160,17 @@
 }
 
 .dark {
-  --background: oklch(0.19 0.02 272);
-  --foreground: oklch(0.93 0.01 275);
-  --surface: oklch(0.19 0.02 272);
-  --surface-container: oklch(0.24 0.024 272);
-  --surface-container-high: oklch(0.28 0.028 272);
-  --surface-container-highest: oklch(0.33 0.03 272);
+  --background: oklch(0.155 0.018 268);
+  --foreground: oklch(0.95 0.006 270);
+  --surface: oklch(0.195 0.02 268);
+  --surface-container: oklch(0.205 0.021 268);
+  --surface-container-high: oklch(0.245 0.023 268);
+  --surface-container-highest: oklch(0.29 0.025 268);
+
+  --ink: oklch(0.115 0.015 268);
+  --ink-foreground: oklch(0.96 0.005 270);
+  --ink-muted: oklch(0.68 0.015 270);
+  --ink-line: oklch(0.27 0.022 268);
 
   --primary: oklch(0.8 0.09 275);
   --primary-foreground: oklch(0.24 0.08 272);
@@ -143,10 +187,10 @@
   --tertiary-container: oklch(0.42 0.11 66);
   --tertiary-container-foreground: oklch(0.95 0.05 80);
 
-  --muted: oklch(0.28 0.025 272);
-  --muted-foreground: oklch(0.76 0.02 275);
-  --outline: oklch(0.6 0.02 272);
-  --outline-variant: oklch(0.36 0.024 272);
+  --muted: oklch(0.245 0.022 268);
+  --muted-foreground: oklch(0.7 0.016 270);
+  --outline: oklch(0.45 0.02 268);
+  --outline-variant: oklch(0.29 0.022 268);
 
   --destructive: oklch(0.78 0.13 22);
   --destructive-foreground: oklch(0.26 0.11 27);
@@ -175,19 +219,115 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv05" 1;
   }
+
+  /* Figures are compared down a column, so they must not shift width. */
+  table,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * Editorial scale. Newsreader is set tight and optically corrected at display
+ * sizes; anything above ~28px needs negative tracking or it reads loose.
+ */
+@utility display-hero {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2.5rem, 6vw, 4.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+@utility display-lg {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  line-height: 1.06;
+  letter-spacing: -0.022em;
+}
+
+@utility display-md {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.375rem;
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+}
+
+@utility display-sm {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.125rem;
+  line-height: 1.28;
+  letter-spacing: -0.01em;
+}
+
+/* Small caps eyebrow used to label a region without shouting. */
+@utility eyebrow {
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.11em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Figures: budgets, confidence, counts. */
+@utility figure-lg {
+  font-size: 1.5rem;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hairline that survives on both themes without looking like a box. */
+@utility rule {
+  border-color: var(--color-border);
 }
 
 /* Material-style state layer for interactive surfaces */
 @utility m3-state {
   position: relative;
   transition:
-    background-color 150ms ease,
-    box-shadow 150ms ease,
-    transform 150ms ease;
+    background-color 160ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 160ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 160ms cubic-bezier(0.2, 0, 0, 1),
+    color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
 
-  &:active {
-    transform: scale(0.985);
+/* Cards lift on hover instead of shrinking on tap. */
+@utility lift {
+  transition:
+    transform 220ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 220ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 220ms cubic-bezier(0.2, 0, 0, 1);
+
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-e2);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    &:hover {
+      transform: none;
+    }
   }
 }
 

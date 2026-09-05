@@ -98,10 +98,39 @@ secrets and the workflow picks them up automatically:
 | `ANDROID_KEY_ALIAS`         | the key alias inside the keystore    |
 | `ANDROID_KEY_PASSWORD`      | the password for that key            |
 
+### Google sign-in
+
+Sign-in uses Supabase's own OAuth, and the two platforms take different routes:
+
+- **Web** redirects in place, back to the deployed origin.
+- **Android** cannot use the in-app WebView (Google refuses OAuth there), so it opens a
+  Chrome Custom Tab and comes back through the deep link
+  `in.wethefuture.wtf://auth/callback`, registered as an intent filter in the manifest.
+
+Both need setup in the Supabase dashboard:
+
+1. **Auth → URL Configuration → Redirect URLs**: add `in.wethefuture.wtf://auth/callback`
+   alongside the existing web origin.
+2. **Auth → Providers → Google**: enable it with a Google Cloud _Web application_ OAuth
+   client. No Android client is needed — Google only ever sees Supabase's own callback.
+
+The client uses the PKCE flow, which both paths require.
+
 ### Known limits on Android
 
-- **Google sign-in** redirects through Supabase to `window.location.origin`, which inside
-  the WebView is the local Capacitor origin rather than a real website. Email sign-in
-  works; Google sign-in needs a deep-link redirect configured before it will round-trip.
-- **The reviewer research agent** is hidden, exactly as on Pages — it is a server
-  function and the APK ships no server.
+The reviewer research agent is hidden, exactly as on Pages — it is a server function and
+the APK ships no server.
+
+## Design
+
+Type is Newsreader (editorial headings) over Inter (interface and figures), both
+self-hosted from `public/fonts` so the APK renders correctly with no network and the
+first paint never waits on a third party. Colour, spacing, radius and elevation are
+semantic tokens in `src/styles.css`; components should reach for those rather than raw
+values.
+
+The map is Leaflet over OpenStreetMap raster tiles. OSM requires visible attribution —
+the map keeps its attribution control, so do not remove it. Note that OSM's public tile
+servers are a volunteer resource with a
+[usage policy](https://operations.osmfoundation.org/policies/tiles/); heavy traffic
+should move to a commercial tile host.
