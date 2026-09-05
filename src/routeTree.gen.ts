@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ConstitutionRouteImport } from './routes/constitution'
 import { Route as SuggestRouteImport } from './routes/suggest'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 
@@ -30,6 +31,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConstitutionRoute = ConstitutionRouteImport.update({
+  id: '/constitution',
+  path: '/constitution',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuggestRoute = SuggestRouteImport.update({
   id: '/suggest',
   path: '/suggest',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/constitution': typeof ConstitutionRoute
   '/suggest': typeof SuggestRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/constitution': typeof ConstitutionRoute
   '/suggest': typeof SuggestRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
@@ -60,22 +68,42 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/constitution': typeof ConstitutionRoute
   '/suggest': typeof SuggestRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/auth' | '/suggest' | '/projects/$projectId'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/constitution'
+    | '/suggest'
+    | '/projects/$projectId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/suggest' | '/projects/$projectId'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/constitution'
+    | '/suggest'
+    | '/projects/$projectId'
   id:
-    '__root__' | '/' | '/admin' | '/auth' | '/suggest' | '/projects/$projectId'
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/constitution'
+    | '/suggest'
+    | '/projects/$projectId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  ConstitutionRoute: typeof ConstitutionRoute
   SuggestRoute: typeof SuggestRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
 }
@@ -103,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/constitution': {
+      id: '/constitution'
+      path: '/constitution'
+      fullPath: '/constitution'
+      preLoaderRoute: typeof ConstitutionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/suggest': {
       id: '/suggest'
       path: '/suggest'
@@ -124,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  ConstitutionRoute: ConstitutionRoute,
   SuggestRoute: SuggestRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
 }
