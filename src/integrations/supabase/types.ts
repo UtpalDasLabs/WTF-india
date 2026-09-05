@@ -14,16 +14,407 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      candidate_projects: {
+        Row: {
+          agent_confidence: number
+          agent_notes: string | null
+          budget_inr: number | null
+          citations: Json
+          created_at: string
+          department: string | null
+          discovered_from: string | null
+          district: string | null
+          id: string
+          name: string
+          plain_summary: string | null
+          proposed_status: Database["public"]["Enums"]["project_status"] | null
+          published_project_id: string | null
+          review_state: Database["public"]["Enums"]["candidate_state"]
+          reviewer_id: string | null
+          reviewer_notes: string | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_confidence?: number
+          agent_notes?: string | null
+          budget_inr?: number | null
+          citations?: Json
+          created_at?: string
+          department?: string | null
+          discovered_from?: string | null
+          district?: string | null
+          id?: string
+          name: string
+          plain_summary?: string | null
+          proposed_status?: Database["public"]["Enums"]["project_status"] | null
+          published_project_id?: string | null
+          review_state?: Database["public"]["Enums"]["candidate_state"]
+          reviewer_id?: string | null
+          reviewer_notes?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_confidence?: number
+          agent_notes?: string | null
+          budget_inr?: number | null
+          citations?: Json
+          created_at?: string
+          department?: string | null
+          discovered_from?: string | null
+          district?: string | null
+          id?: string
+          name?: string
+          plain_summary?: string | null
+          proposed_status?: Database["public"]["Enums"]["project_status"] | null
+          published_project_id?: string | null
+          review_state?: Database["public"]["Enums"]["candidate_state"]
+          reviewer_id?: string | null
+          reviewer_notes?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_projects_published_project_id_fkey"
+            columns: ["published_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      project_milestones: {
+        Row: {
+          description: string | null
+          event_date: string | null
+          id: string
+          is_verified: boolean
+          project_id: string
+          sort_order: number
+          source_id: string | null
+          title: string
+        }
+        Insert: {
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          is_verified?: boolean
+          project_id: string
+          sort_order?: number
+          source_id?: string | null
+          title: string
+        }
+        Update: {
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          is_verified?: boolean
+          project_id?: string
+          sort_order?: number
+          source_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_milestones_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "project_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_sources: {
+        Row: {
+          confidence: number
+          created_at: string
+          extracted_evidence: string | null
+          id: string
+          last_verified_at: string | null
+          project_id: string
+          publisher: string | null
+          source_type: Database["public"]["Enums"]["source_type"]
+          title: string
+          url: string
+          verification_status: Database["public"]["Enums"]["verify_status"]
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          extracted_evidence?: string | null
+          id?: string
+          last_verified_at?: string | null
+          project_id: string
+          publisher?: string | null
+          source_type: Database["public"]["Enums"]["source_type"]
+          title: string
+          url: string
+          verification_status?: Database["public"]["Enums"]["verify_status"]
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          extracted_evidence?: string | null
+          id?: string
+          last_verified_at?: string | null
+          project_id?: string
+          publisher?: string | null
+          source_type?: Database["public"]["Enums"]["source_type"]
+          title?: string
+          url?: string
+          verification_status?: Database["public"]["Enums"]["verify_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          actual_end_date: string | null
+          budget_inr: number | null
+          confidence: number
+          created_at: string
+          department: string | null
+          details: string | null
+          district: string | null
+          id: string
+          last_verified_at: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          plain_summary: string
+          planned_end_date: string | null
+          published: boolean
+          sector: string | null
+          start_date: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          updated_at: string
+          verification_status: Database["public"]["Enums"]["verify_status"]
+        }
+        Insert: {
+          actual_end_date?: string | null
+          budget_inr?: number | null
+          confidence?: number
+          created_at?: string
+          department?: string | null
+          details?: string | null
+          district?: string | null
+          id?: string
+          last_verified_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          plain_summary: string
+          planned_end_date?: string | null
+          published?: boolean
+          sector?: string | null
+          start_date?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["verify_status"]
+        }
+        Update: {
+          actual_end_date?: string | null
+          budget_inr?: number | null
+          confidence?: number
+          created_at?: string
+          department?: string | null
+          details?: string | null
+          district?: string | null
+          id?: string
+          last_verified_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          plain_summary?: string
+          planned_end_date?: string | null
+          published?: boolean
+          sector?: string | null
+          start_date?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["verify_status"]
+        }
+        Relationships: []
+      }
+      review_images: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          image_url: string
+          moderation_label: string | null
+          moderation_state: Database["public"]["Enums"]["moderation_state"]
+          review_id: string
+          user_id: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          moderation_label?: string | null
+          moderation_state?: Database["public"]["Enums"]["moderation_state"]
+          review_id: string
+          user_id?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          moderation_label?: string | null
+          moderation_state?: Database["public"]["Enums"]["moderation_state"]
+          review_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_images_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          author_name: string | null
+          body: string | null
+          created_at: string
+          id: string
+          masked_body: string | null
+          moderation_label: string | null
+          moderation_notes: string | null
+          moderation_state: Database["public"]["Enums"]["moderation_state"]
+          project_id: string
+          rating: number
+          user_id: string | null
+        }
+        Insert: {
+          author_name?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          masked_body?: string | null
+          moderation_label?: string | null
+          moderation_notes?: string | null
+          moderation_state?: Database["public"]["Enums"]["moderation_state"]
+          project_id: string
+          rating: number
+          user_id?: string | null
+        }
+        Update: {
+          author_name?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          masked_body?: string | null
+          moderation_label?: string | null
+          moderation_notes?: string | null
+          moderation_state?: Database["public"]["Enums"]["moderation_state"]
+          project_id?: string
+          rating?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_reviewer: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "reviewer" | "user"
+      candidate_state: "discovered" | "in_review" | "approved" | "rejected"
+      moderation_state: "visible" | "held" | "blurred" | "removed"
+      project_status:
+        | "planned"
+        | "ongoing"
+        | "delayed"
+        | "completed"
+        | "finished_early"
+      source_type:
+        | "government_portal"
+        | "tender_document"
+        | "budget_document"
+        | "press_release"
+        | "audit_report"
+        | "news_report"
+        | "rti_response"
+      verify_status: "unverified" | "pending_review" | "verified" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +541,27 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "reviewer", "user"],
+      candidate_state: ["discovered", "in_review", "approved", "rejected"],
+      moderation_state: ["visible", "held", "blurred", "removed"],
+      project_status: [
+        "planned",
+        "ongoing",
+        "delayed",
+        "completed",
+        "finished_early",
+      ],
+      source_type: [
+        "government_portal",
+        "tender_document",
+        "budget_document",
+        "press_release",
+        "audit_report",
+        "news_report",
+        "rti_response",
+      ],
+      verify_status: ["unverified", "pending_review", "verified", "rejected"],
+    },
   },
 } as const
