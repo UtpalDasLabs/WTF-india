@@ -1,6 +1,6 @@
 # Future Forward India
 
-Build a mobile-first PWA called “We the Future” (WTF) for India. It shows government projects based on a user’s location, with map/list discovery, search, and filters for Planned, Ongoing, Delayed, Completed, and Finished Early. Make Material 3 the design language. Create a realistic testable MVP with seeded example Indian projects and an evidence panel on every project that shows official source links, source type, verification status, confidence, last verified date, and extracted evidence. Write project details in clear plain English. Design a strict separation between verified project facts/timeline and community ratings, reviews, feedback, and user images. Enable Lovable Cloud for data, authentication-ready user content, and an internal AI research-agent workflow concept that discovers candidate projects from official data sources, retains citations, and sends them through a reviewer verification queue before publishing as verified. Add basic common public-platform AI moderation for review text and uploaded images. Mask profanity or flagged words with asterisks where appropriate rather than silently hiding it; provide moderation labels and enforce hold/blur/remove for unsafe content according to severity. Include a reviewer/admin verification workflow in the UI with clear statuses. Make this polished enough to test, responsive, and include a guided empty/loading/permission-denied state for location. Do not implement Android packaging yet.
+Build a mobile-first PWA called “We the Future” (WTF) for India. It shows government projects based on a user’s location, with map/list discovery, search, and filters for Planned, Ongoing, Delayed, Completed, and Finished Early. Make Material 3 the design language. Create a realistic testable MVP with seeded example Indian projects and an evidence panel on every project that shows official source links, source type, verification status, confidence, last verified date, and extracted evidence. Write project details in clear plain English. Design a strict separation between verified project facts/timeline and community ratings, reviews, feedback, and user images. Use Supabase for data, authentication-ready user content, and an internal AI research-agent workflow concept that discovers candidate projects from official data sources, retains citations, and sends them through a reviewer verification queue before publishing as verified. Add basic common public-platform AI moderation for review text and uploaded images. Mask profanity or flagged words with asterisks where appropriate rather than silently hiding it; provide moderation labels and enforce hold/blur/remove for unsafe content according to severity. Include a reviewer/admin verification workflow in the UI with clear statuses. Make this polished enough to test, responsive, and include a guided empty/loading/permission-denied state for location. Do not implement Android packaging yet.
 
 ## Development
 
@@ -9,13 +9,17 @@ Prefer working locally? You need Node.js and npm — [install with nvm](https://
 ```sh
 git clone <this-repository-url>
 cd <repository-name>
-npm i
+npm ci
 npm run dev
 ```
 
+Data and auth are backed by Supabase; the publishable keys live in `.env`. The
+reviewer research agent additionally needs `AI_GATEWAY_URL`, `AI_GATEWAY_API_KEY`
+and `AI_MODEL` pointing at any OpenAI-compatible chat-completions endpoint.
+
 ## Deploy to GitHub Pages
 
-The app normally runs as a TanStack Start SSR app. GitHub Pages serves static files
+The app normally runs as a TanStack Start SSR app (`npm run build`, served by nitro). GitHub Pages serves static files
 only, so the Pages build swaps SSR for TanStack Start's SPA mode: one prerendered
 shell (`index.html`) that boots the client router, with all data still fetched from
 Supabase directly in the browser.
@@ -34,6 +38,10 @@ is not the case.
 ### Publishing
 
 1. In the repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+   This matters: a site left on _Deploy from a branch_ serves Jekyll's render of the
+   repo — you get `README.md` as the home page — and ignores this workflow's output,
+   while the deploy still reports success. The workflow now forces the source back to
+   GitHub Actions on every run, but the first switch may need to be made by hand.
 2. Push to `main`, or run the workflow manually from any branch via
    **Actions → Deploy to GitHub Pages → Run workflow**.
 
