@@ -20,7 +20,6 @@ import { useLocation } from "@/hooks/use-location";
 import { projectsQuery, ratingsQuery, type Project } from "@/lib/queries";
 import {
   CITY_RADIUS_KM,
-  CITY_RADIUS_KM,
   INDIAN_CITIES,
   STATUS_CLASS,
   STATUS_LABEL,
