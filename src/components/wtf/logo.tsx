@@ -48,10 +48,10 @@ export function WtfMark({
       </g>
 
       {/* verified tick sitting on a bright civic bar */}
-      <rect x="7" y="46" width="34" height="5.6" rx="2.8" fill="#FFFFFF" opacity="0.9" />
-      <circle cx="51" cy="48.8" r="8.2" fill="#3DD9A0" />
+      <rect x="7" y="47.5" width="33" height="5.4" rx="2.7" fill="#FFFFFF" opacity="0.9" />
+      <circle cx="51.5" cy="50" r="7.8" fill="#3DD9A0" />
       <path
-        d="M47.3 49l3 3 5-6"
+        d="M48 50.2l2.8 2.8 4.7-5.6"
         fill="none"
         stroke="#12275A"
         strokeWidth="2.6"
