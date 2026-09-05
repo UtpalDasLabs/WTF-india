@@ -149,6 +149,56 @@ function AdminPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  /**
+   * Community submissions are listed as community-sourced and never as a
+   * verified government fact: they go public marked "awaiting reviewer check".
+   */
+  const publishCommunity = useMutation({
+    mutationFn: async (candidateId: string) => {
+      const candidate = (candidates.data ?? []).find((item) => item.id === candidateId);
+      if (!candidate) throw new Error("Submission not found.");
+
+      const { data: created, error } = await wtfDb
+        .from("projects")
+        .insert({
+          name: candidate.name,
+          plain_summary:
+            candidate.plain_summary ??
+            `Reported by a member of the public in ${candidate.location_text ?? "India"}.`,
+          department: candidate.department,
+          state: candidate.state,
+          district: candidate.district,
+          sector: candidate.category,
+          status: candidate.completion_date ? "completed" : "ongoing",
+          actual_end_date: candidate.completion_date,
+          verification_status: "pending_review",
+          confidence: 0,
+          published: true,
+          source_origin: "community",
+          community_note: candidate.observed_condition,
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+
+      const projectId = (created as { id: string }).id;
+      const { error: updateError } = await wtfDb
+        .from("candidate_projects")
+        .update({
+          review_state: "approved",
+          reviewer_id: session.userId,
+          published_project_id: projectId,
+        })
+        .eq("id", candidateId);
+      if (updateError) throw new Error(updateError.message);
+    },
+    onSuccess: () => {
+      invalidate(["candidates", "projects", "my-submissions"]);
+      toast.success("Listed as a community-reported project awaiting checks.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const setReviewState = useMutation({
     mutationFn: async ({
       id,
