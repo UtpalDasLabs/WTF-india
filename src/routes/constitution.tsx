@@ -139,7 +139,7 @@ function ConstitutionPage() {
             {language.status === "in_app" ? (
               <BadgeCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
             ) : (
-              <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-status-delayed" aria-hidden />
             )}
             <span>
               <span className="font-medium text-foreground">
@@ -200,7 +200,7 @@ function ConstitutionPage() {
                             "label-sm shrink-0 rounded-full px-2 py-1",
                             l.status === "in_app"
                               ? "bg-tertiary-container text-tertiary-container-foreground"
-                              : "bg-surface-variant text-muted-foreground",
+                              : "bg-surface-container-high text-muted-foreground",
                           )}
                         >
                           {l.status === "in_app" ? "Text ready" : "Unconfirmed"}
@@ -260,7 +260,7 @@ function ConstitutionPage() {
             </article>
           ) : (
             <div className="mx-auto max-w-prose text-center">
-              <AlertCircle className="mx-auto size-6 text-warning" aria-hidden />
+              <AlertCircle className="mx-auto size-6 text-status-delayed" aria-hidden />
               <h2 className="mt-2 text-base font-semibold">
                 We do not have a confirmed {language.name} text yet
               </h2>
@@ -344,7 +344,7 @@ function ConstitutionPage() {
                       <p className="text-sm font-semibold">
                         {p.part} — {p.title}
                       </p>
-                      <span className="label-sm rounded-full bg-surface-variant px-2 py-0.5 text-muted-foreground">
+                      <span className="label-sm rounded-full bg-surface-container-high px-2 py-0.5 text-muted-foreground">
                         {p.articles}
                       </span>
                     </div>
