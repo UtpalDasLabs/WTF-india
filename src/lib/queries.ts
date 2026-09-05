@@ -159,12 +159,13 @@ export const milestonesQuery = (projectId: string) =>
     },
   });
 
+/** Public review list. Reads the masked public view, so anonymous authors stay hidden. */
 export const reviewsQuery = (projectId: string) =>
   queryOptions({
     queryKey: ["reviews", projectId],
     queryFn: async (): Promise<Review[]> => {
       const { data, error } = await db
-        .from("reviews")
+        .from("reviews_public")
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
@@ -173,21 +174,55 @@ export const reviewsQuery = (projectId: string) =>
     },
   });
 
+/** The signed-in person's own review for a project, including held content. */
+export const myReviewQuery = (projectId: string, userId: string | null) =>
+  queryOptions({
+    queryKey: ["my-review", projectId, userId],
+    enabled: Boolean(userId),
+    queryFn: async (): Promise<Review | null> => {
+      if (!userId) return null;
+      const { data, error } = await db
+        .from("reviews")
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return (data ?? null) as Review | null;
+    },
+  });
+
 export const reviewImagesQuery = (projectId: string) =>
   queryOptions({
     queryKey: ["review-images", projectId],
     queryFn: async (): Promise<ReviewImage[]> => {
       const { data: reviewRows, error: reviewError } = await db
-        .from("reviews")
+        .from("reviews_public")
         .select("id")
         .eq("project_id", projectId);
       if (reviewError) throw new Error(reviewError.message);
       const ids = (reviewRows ?? []).map((row: { id: string }) => row.id);
       if (ids.length === 0) return [];
       const { data, error } = await db
-        .from("review_images")
+        .from("review_images_public")
         .select("*")
         .in("review_id", ids);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as ReviewImage[];
+    },
+  });
+
+/** Photos on the signed-in person's own review, including ones still being checked. */
+export const myReviewImagesQuery = (reviewId: string | null) =>
+  queryOptions({
+    queryKey: ["my-review-images", reviewId],
+    enabled: Boolean(reviewId),
+    queryFn: async (): Promise<ReviewImage[]> => {
+      if (!reviewId) return [];
+      const { data, error } = await db
+        .from("review_images")
+        .select("*")
+        .eq("review_id", reviewId);
       if (error) throw new Error(error.message);
       return (data ?? []) as ReviewImage[];
     },
