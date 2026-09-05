@@ -119,8 +119,30 @@ function AuthPage() {
         </h1>
         <p className="text-sm text-muted-foreground">
           You only need an account to add your own rating, review or photo. Browsing
-          projects is open to everyone.
+          projects is open to everyone. You can still post anonymously — your name is
+          hidden, your account stays linked privately for moderation.
         </p>
+
+        <div className="space-y-3 rounded-3xl bg-surface-container p-4">
+          <Button
+            type="button"
+            size="lg"
+            disabled={busy}
+            onClick={google}
+            className="h-12 w-full rounded-full text-base"
+          >
+            Continue with Google
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Fastest way in — one tap, no password to remember.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-outline" />
+          or use email
+          <span className="h-px flex-1 bg-outline" />
+        </div>
 
         <form onSubmit={submit} className="space-y-3 rounded-3xl bg-surface-container p-4">
           <div className="space-y-1.5">
@@ -148,15 +170,6 @@ function AuthPage() {
           </div>
           <Button type="submit" disabled={busy} className="w-full rounded-full">
             {mode === "signin" ? "Sign in" : "Create account"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={busy}
-            onClick={google}
-            className="w-full rounded-full"
-          >
-            Continue with Google
           </Button>
         </form>
 

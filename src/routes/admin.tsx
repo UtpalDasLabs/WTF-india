@@ -451,6 +451,12 @@ function AdminPage() {
                 </span>
               </div>
               <p className="mt-2 text-sm">{review.masked_body ?? review.body}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Account: {review.author_name ?? "Unknown"}
+                {review.is_anonymous
+                  ? " · posted anonymously in public (shown as “Verified local resident”)"
+                  : ""}
+              </p>
               {review.moderation_notes ? (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Why it was flagged: {review.moderation_notes}

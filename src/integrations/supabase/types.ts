@@ -312,6 +312,13 @@ export type Database = {
             referencedRelation: "reviews"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "review_images_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       reviews: {
@@ -320,6 +327,7 @@ export type Database = {
           body: string | null
           created_at: string
           id: string
+          is_anonymous: boolean
           masked_body: string | null
           moderation_label: string | null
           moderation_notes: string | null
@@ -333,6 +341,7 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
+          is_anonymous?: boolean
           masked_body?: string | null
           moderation_label?: string | null
           moderation_notes?: string | null
@@ -346,6 +355,7 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
+          is_anonymous?: boolean
           masked_body?: string | null
           moderation_label?: string | null
           moderation_notes?: string | null
@@ -384,7 +394,58 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      review_images_public: {
+        Row: {
+          caption: string | null
+          id: string | null
+          image_url: string | null
+          moderation_label: string | null
+          moderation_state:
+            | Database["public"]["Enums"]["moderation_state"]
+            | null
+          review_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_images_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_images_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews_public: {
+        Row: {
+          author_name: string | null
+          created_at: string | null
+          id: string | null
+          is_anonymous: boolean | null
+          masked_body: string | null
+          moderation_label: string | null
+          moderation_state:
+            | Database["public"]["Enums"]["moderation_state"]
+            | null
+          project_id: string | null
+          rating: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
