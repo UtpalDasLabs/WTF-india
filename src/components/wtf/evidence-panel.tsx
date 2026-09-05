@@ -4,7 +4,14 @@ import { VerificationChip } from "@/components/wtf/status-chip";
 import type { ProjectSource } from "@/lib/queries";
 import { SOURCE_TYPE_LABEL, confidencePercent, formatDate } from "@/lib/wtf";
 
-export function EvidencePanel({ sources }: { sources: ProjectSource[] }) {
+export function EvidencePanel({
+  sources,
+  loading = false,
+}: {
+  sources: ProjectSource[];
+  loading?: boolean;
+}) {
+  void loading;
   return (
     <section
       aria-labelledby="evidence-heading"
