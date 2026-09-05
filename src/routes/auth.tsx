@@ -122,6 +122,27 @@ function AuthPage() {
           projects is open to everyone.
         </p>
 
+        <div className="space-y-3 rounded-3xl bg-surface-container p-4">
+          <Button
+            type="button"
+            size="lg"
+            disabled={busy}
+            onClick={google}
+            className="h-12 w-full rounded-full text-base"
+          >
+            Continue with Google
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Fastest way in — one tap, no password to remember.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-outline" />
+          or use email
+          <span className="h-px flex-1 bg-outline" />
+        </div>
+
         <form onSubmit={submit} className="space-y-3 rounded-3xl bg-surface-container p-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
