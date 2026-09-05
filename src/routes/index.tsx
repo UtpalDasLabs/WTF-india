@@ -6,9 +6,13 @@ import {
   List,
   LocateFixed,
   Map as MapIcon,
+  ScrollText,
   Search,
   ShieldCheck,
 } from "lucide-react";
+
+import heroImage from "@/assets/civic-hero.jpg";
+
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
