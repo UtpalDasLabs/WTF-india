@@ -98,6 +98,17 @@ secrets and the workflow picks them up automatically:
 | `ANDROID_KEY_ALIAS`         | the key alias inside the keystore    |
 | `ANDROID_KEY_PASSWORD`      | the password for that key            |
 
+### The Supabase project
+
+The app talks to Supabase directly from the browser. The project is
+`oexktlybbrdymdctwzww` (`wtf-india`, region `ap-south-1`), and its URL and
+publishable key live in `.env` — they are publishable keys, meant to be in a browser
+bundle, so row-level security is what actually protects the data.
+
+The full schema lives in `supabase/migrations/` and is the source of truth: 8 tables,
+3 views, the `is_reviewer` / `has_role` functions, RLS policies and seed rows. To stand
+the database up somewhere else, apply those files in filename order.
+
 ### Google sign-in
 
 Sign-in uses Supabase's own OAuth, and the two platforms take different routes:
