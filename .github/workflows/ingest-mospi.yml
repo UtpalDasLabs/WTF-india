@@ -1,0 +1,90 @@
+name: Ingest MoSPI flash report
+
+# The development sandbox cannot reach mospi.gov.in, and the report is only
+# republished once a month, so the extraction runs here.
+#
+# It opens a pull request rather than committing to main. For a product whose
+# whole claim is "every figure comes from an official record", the extraction
+# needs to be something a person can read before it reaches the site: the PR
+# diff shows exactly which projects a run added, changed or dropped.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Specific report URL (leave blank to take the newest)"
+        required: false
+        type: string
+      inspect:
+        description: "Inspect only — print structure, write nothing"
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    # Early on the 8th: the flash report for a month lands in the first week.
+    - cron: "20 2 8 * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PDF tooling
+        run: pip install --quiet pdfplumber
+
+      - name: Test the parser before trusting it with real data
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python -u scripts/test_ingest_mospi.py
+
+      - name: Extract
+        env:
+          # Without this Python buffers stdout off a TTY and a slow run looks
+          # identical to a hung one.
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python -u scripts/ingest-mospi.py \
+            ${{ inputs.url && format('--url {0}', inputs.url) || '' }} \
+            ${{ inputs.inspect && '--inspect' || '' }}
+
+      - name: Keep the extraction log whatever happens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mospi-extraction
+          path: data/mospi/
+          if-no-files-found: ignore
+
+      - name: Open a pull request with the data
+        if: ${{ !inputs.inspect }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: data/mospi-refresh
+          add-paths: data/mospi/
+          commit-message: |
+            Refresh the MoSPI project data
+
+            Extracted by scripts/ingest-mospi.py from the latest monthly flash
+            report. See data/mospi/extraction-report.md in this diff for what
+            the run saw, kept and dropped.
+          title: "Refresh the MoSPI project data"
+          body: |
+            Automated extraction from MoSPI's monthly flash report.
+
+            Read `data/mospi/extraction-report.md` in this diff first: it says how
+            many rows were kept, how many were dropped and why, and how many
+            projects could be placed on the map from their own names.
+
+            Nothing here is estimated. A project with no published cost or date is
+            dropped rather than filled in, and one whose location cannot be matched
+            from its name gets no coordinates.
+          labels: data
