@@ -5,41 +5,47 @@ This exists because the sandbox this repo is developed in cannot reach
 data.gov.in, but GitHub's runners can. Run it from the Actions tab and read the
 log: it is a telescope pointed at the catalogue, not part of the build.
 
-Two things learned the hard way and encoded here:
-  - api.data.gov.in/catalog does not exist; every call 404s. Discovery has to go
-    through the datagovindia client's own index of the platform's resources.
-  - That client's sync_metadata() pulls a very large index and can sit there for
-    a long time, so it runs under a hard alarm and the script keeps going without
-    it rather than hanging a runner.
+Three things learned the hard way, each encoded here so we do not repeat them:
+
+  1. api.data.gov.in/catalog does not exist. Every call 404s.
+  2. Python buffers stdout off a TTY, so a cancelled run loses everything. Runs
+     under python -u and every print flushes.
+  3. The datagovindia client cannot build its index from a GitHub runner: its
+     sync gave up after 180s with a ReadTimeout, leaving an empty local db and
+     every search raising "Could not find tables". So no third-party index.
+
+What is left is the plain documented resource endpoint plus the portal's own
+search page, which a runner can read even though this sandbox cannot. Step 1
+proves the key and endpoint work at all against a resource id known to exist;
+step 2 harvests ids out of the search HTML; step 3 opens each one.
 
 Needs DATA_GOV_IN_KEY in the environment. One key covers every dataset.
 """
 
+import json
 import os
-import signal
+import re
 import sys
-import traceback
+import urllib.error
+import urllib.parse
+import urllib.request
 
 KEY = os.environ.get("DATA_GOV_IN_KEY", "").strip()
 if not KEY:
     sys.exit("DATA_GOV_IN_KEY is not set. Add it as a repository secret.")
 
-SYNC_SECONDS = int(os.environ.get("SYNC_SECONDS", "420"))
+# Widely published in data.gov.in tutorials; used only to prove the plumbing.
+CONTROL_RESOURCE = "9ef84268-d588-465a-a308-a864a43d0070"
 
-# What we are hunting: per-project rows with costs and dates, not sector totals.
-QUERIES = [
+TERMS = [
     "central sector projects",
-    "infrastructure projects",
-    "cost overrun",
-    "time overrun",
+    "infrastructure projects cost overrun",
     "project monitoring",
-    "programme implementation",
+    "time overrun",
 ]
 
-# Searched first purely to tell "the index is empty" apart from "our words are wrong".
-CONTROL = "rainfall"
-
-MAX_PER_QUERY = 8
+UA = "Mozilla/5.0 (compatible; wtf-india-probe/1.0)"
+UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 
 def say(*parts: object) -> None:
@@ -52,88 +58,86 @@ def banner(text: str) -> None:
     say("=" * 78)
 
 
-class Timeout(Exception):
-    pass
-
-
-def _alarm(_signum: int, _frame: object) -> None:
-    raise Timeout()
-
-
-banner("Connecting to the data.gov.in index")
-try:
-    import pandas as pd
-    from datagovindia import DataGovIndia
-
-    pd.set_option("display.max_colwidth", 120)
-    dgi = DataGovIndia()
-    say("client constructed")
-except Exception:  # noqa: BLE001
-    traceback.print_exc()
-    sys.exit("Could not initialise the datagovindia client.")
-
-
-def try_search(term: str):
+def fetch(url: str, timeout: int = 45) -> tuple[int, str]:
+    request = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
-        return dgi.search(term, search_fields=["title", "description"])
-    except Exception as error:  # noqa: BLE001
-        say(f"  !! search({term!r}): {type(error).__name__}: {error}")
-        return None
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return response.status, response.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as error:
+        return error.code, error.read().decode("utf-8", "replace")[:400]
+    except Exception as error:  # noqa: BLE001 - a probe reports, it does not raise
+        return 0, f"{type(error).__name__}: {error}"
 
 
-# Does the client already have a usable index, or must we pay for the sync?
-say(f"\ncontrol search for {CONTROL!r} before syncing…")
-control = try_search(CONTROL)
-have_index = control is not None and len(control) > 0
-say(f"control hits before sync: {0 if control is None else len(control)}")
+def resource_url(resource_id: str, limit: int = 2) -> str:
+    query = urllib.parse.urlencode(
+        {"api-key": KEY, "format": "json", "limit": limit}
+    )
+    return f"https://api.data.gov.in/resource/{resource_id}?{query}"
 
-if not have_index:
-    banner(f"Index looks empty — syncing metadata (hard limit {SYNC_SECONDS}s)")
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(SYNC_SECONDS)
+
+def describe(resource_id: str, label: str = "") -> bool:
+    """Print a resource's columns and one row. True if it returned rows."""
+    status, body = fetch(resource_url(resource_id))
+    say(f"    HTTP {status}")
+    if status != 200:
+        say(f"    body: {body[:300]}")
+        return False
     try:
-        dgi.sync_metadata()
-        say("metadata synced")
-    except Timeout:
-        say(f"!! sync_metadata exceeded {SYNC_SECONDS}s — abandoning it")
-    except Exception as error:  # noqa: BLE001
-        say(f"!! sync_metadata: {type(error).__name__}: {error}")
-    finally:
-        signal.alarm(0)
-    control = try_search(CONTROL)
-    say(f"control hits after sync: {0 if control is None else len(control)}")
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        say(f"    not JSON: {body[:300]}")
+        return False
 
-candidates: dict[str, str] = {}
+    say(f"    title: {payload.get('title')}")
+    say(f"    total rows: {payload.get('total')}")
+    fields = payload.get("field")
+    if isinstance(fields, list):
+        names = [str(f.get("id") or f.get("name")) for f in fields]
+        say(f"    columns ({len(names)}): {names}")
+    records = payload.get("records") or []
+    if records:
+        say(f"    row 0: {json.dumps(records[0], ensure_ascii=False)[:900]}")
+        return True
+    say("    (no rows)")
+    return False
 
-for term in QUERIES:
-    banner(f"search: {term!r}")
-    found = try_search(term)
-    if found is None or len(found) == 0:
-        say("  (nothing)")
-        continue
-    say(f"  {len(found)} hit(s); showing up to {MAX_PER_QUERY}")
-    for _, row in found.head(MAX_PER_QUERY).iterrows():
-        rid = str(row.get("index_name", ""))
-        title = str(row.get("title", ""))[:130]
-        say(f"  - {title}")
-        say(f"    id={rid}")
-        low = title.lower()
-        if rid and any(word in low for word in ("project", "overrun", "monitor")):
-            candidates[rid] = title
 
-banner(f"Opening {len(candidates)} candidate(s) to read their columns")
-for rid, title in list(candidates.items())[:12]:
-    say(f"\n--- {title}\n    id={rid}")
-    try:
-        data = dgi.get_data(rid, api_key=KEY, num_results=2)
-        if data is not None and len(data):
-            say(f"    columns: {list(data.columns)}")
-            say(f"    row 0: {data.iloc[0].to_dict()}")
-        else:
-            say("    (no rows returned)")
-    except Exception as error:  # noqa: BLE001
-        say(f"    get_data: {type(error).__name__}: {error}")
+banner("STEP 1 — does the key and the resource endpoint work at all?")
+say(f"control resource {CONTROL_RESOURCE}")
+plumbing_ok = describe(CONTROL_RESOURCE)
+say(f"\nplumbing works: {plumbing_ok}")
+
+banner("STEP 2 — harvest resource ids from the portal's own search pages")
+# The portal's search is HTML, not an API. A runner can read it; this sandbox
+# cannot. Several URL shapes are tried because the portal has changed layout.
+found: dict[str, str] = {}
+for term in TERMS:
+    quoted = urllib.parse.quote_plus(term)
+    for shape in (
+        f"https://www.data.gov.in/search?title={quoted}",
+        f"https://www.data.gov.in/catalogs?q={quoted}",
+        f"https://www.data.gov.in/search/site/{quoted}",
+    ):
+        status, body = fetch(shape)
+        ids = set(UUID_RE.findall(body)) if status == 200 else set()
+        say(f"  {status:>3}  {len(ids):>3} uuid(s)  {shape}")
+        for rid in ids:
+            found.setdefault(rid, term)
+        if ids:
+            break
+
+say(f"\ndistinct resource ids harvested: {len(found)}")
+
+banner("STEP 3 — open each harvested id")
+if not found:
+    say("Nothing harvested. The portal search is likely rendered client-side,")
+    say("so the ids are not in the served HTML. Next move is the MoSPI flash")
+    say("report PDFs, which carry the per-project table we actually want.")
+for rid, term in list(found.items())[:15]:
+    say(f"\n--- {rid}   (from search {term!r})")
+    describe(rid)
 
 banner("Done")
-say("Want: a resource whose columns include a project NAME plus original and")
-say("revised COST, and original and anticipated COMPLETION DATE.")
+say("Want: columns with a project NAME plus original and revised COST,")
+say("and original and anticipated COMPLETION DATE.")
