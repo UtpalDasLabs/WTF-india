@@ -5,91 +5,101 @@ This exists because the sandbox this repo is developed in cannot reach
 data.gov.in, but GitHub's runners can. Run it from the Actions tab and read the
 log: it is a telescope pointed at the catalogue, not part of the build.
 
+Discovery goes through the `datagovindia` client rather than a hand-rolled
+catalogue call. A first attempt hit /catalog directly and got 404 for every
+term — that endpoint does not exist. The client keeps its own index of the
+platform's ~180k resources, which is the documented way to find a resource id.
+
 Needs DATA_GOV_IN_KEY in the environment. One key covers every dataset.
 """
 
-import json
 import os
 import sys
-import urllib.parse
-import urllib.request
+import traceback
 
 KEY = os.environ.get("DATA_GOV_IN_KEY", "").strip()
 if not KEY:
     sys.exit("DATA_GOV_IN_KEY is not set. Add it as a repository secret.")
 
-# What we are hunting for: per-project rows with costs and dates, not sector totals.
+# What we are hunting: per-project rows with costs and dates, not sector totals.
 QUERIES = [
-    "central sector infrastructure projects",
-    "OCMS project monitoring",
+    "central sector projects",
+    "infrastructure projects",
     "cost overrun",
-    "time overrun delayed projects",
-    "infrastructure projects 150 crore",
-    "project monitoring statistics programme implementation",
+    "time overrun",
+    "project monitoring",
+    "OCMS",
+    "programme implementation",
 ]
 
-CATALOG = "https://api.data.gov.in/catalog"
-RESOURCE = "https://api.data.gov.in/resource"
+MAX_PER_QUERY = 8
 
 
-def get(url: str, params: dict) -> dict | None:
-    query = urllib.parse.urlencode({**params, "api-key": KEY, "format": "json"})
-    request = urllib.request.Request(
-        f"{url}?{query}", headers={"User-Agent": "wtf-india-probe/1.0"}
-    )
+def banner(text: str) -> None:
+    print("\n" + "=" * 78)
+    print(text)
+    print("=" * 78)
+
+
+banner("Connecting to the data.gov.in index")
+try:
+    import pandas as pd
+    from datagovindia import DataGovIndia
+
+    pd.set_option("display.max_colwidth", 120)
+    dgi = DataGovIndia()
+    # The index is cached locally; on a cold runner it has to be pulled first.
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return json.loads(response.read().decode("utf-8", "replace"))
-    except Exception as error:  # noqa: BLE001 - a probe reports failures, it does not raise
-        print(f"    !! {type(error).__name__}: {error}")
-        return None
+        dgi.sync_metadata()
+        print("metadata synced")
+    except Exception as error:  # noqa: BLE001
+        print(f"sync_metadata said: {type(error).__name__}: {error} (continuing)")
+except Exception:  # noqa: BLE001
+    traceback.print_exc()
+    sys.exit("Could not initialise the datagovindia client.")
 
+candidates: dict[str, str] = {}
 
-def search(term: str) -> list[dict]:
-    """The catalogue endpoint is the only documented way to discover resource ids."""
-    payload = get(CATALOG, {"filters[title]": term, "limit": 10})
-    if not payload:
-        return []
-    records = payload.get("records") or payload.get("data") or []
-    return records if isinstance(records, list) else []
-
-
-def describe(resource_id: str) -> None:
-    """One row tells us the field names, which is what the ingester needs."""
-    payload = get(RESOURCE + "/" + resource_id, {"limit": 1})
-    if not payload:
-        return
-    print(f"    total rows reported: {payload.get('total')}")
-    fields = payload.get("field")
-    if isinstance(fields, list):
-        names = [f.get("id") or f.get("name") for f in fields]
-        print(f"    fields ({len(names)}): {', '.join(str(n) for n in names)}")
-    records = payload.get("records") or []
-    if records:
-        print(f"    sample row: {json.dumps(records[0], ensure_ascii=False)[:800]}")
-
-
-print("=" * 78)
-print("data.gov.in catalogue probe")
-print("=" * 78)
-
-seen: set[str] = set()
 for term in QUERIES:
-    print(f"\n### search: {term!r}")
-    hits = search(term)
-    if not hits:
-        print("    (no records returned — the catalogue filter may not support this term)")
+    banner(f"search: {term!r}")
+    try:
+        found = dgi.search(term, search_fields=["title", "description"])
+    except Exception as error:  # noqa: BLE001
+        print(f"  !! {type(error).__name__}: {error}")
         continue
-    for hit in hits:
-        rid = str(hit.get("index_name") or hit.get("resource_id") or hit.get("id") or "")
-        title = str(hit.get("title") or "")[:150]
-        org = hit.get("org") or hit.get("organization") or ""
+    if found is None or len(found) == 0:
+        print("  (nothing)")
+        continue
+    print(f"  {len(found)} hit(s); showing up to {MAX_PER_QUERY}")
+    for _, row in found.head(MAX_PER_QUERY).iterrows():
+        rid = str(row.get("index_name", ""))
+        title = str(row.get("title", ""))[:130]
+        org = str(row.get("org_type", "") or row.get("source", ""))[:60]
         print(f"  - {title}")
-        print(f"    id: {rid}   org: {org}")
-        if rid and rid not in seen:
-            seen.add(rid)
-            describe(rid)
+        print(f"    id={rid}  org={org}")
+        # Anything mentioning both a project and money or a date is worth opening.
+        low = title.lower()
+        if rid and any(w in low for w in ("project", "overrun", "monitor")):
+            candidates[rid] = title
 
-print(f"\nDistinct resource ids inspected: {len(seen)}")
-print("Look for one whose fields include a project NAME plus original/revised cost")
-print("and original/anticipated completion dates. That is the ingestion target.")
+banner(f"Opening {len(candidates)} candidate(s) to read their columns")
+for rid, title in list(candidates.items())[:12]:
+    print(f"\n--- {title}\n    id={rid}")
+    try:
+        info = dgi.get_api_info(rid)
+        print(f"    info: {str(info)[:400]}")
+    except Exception as error:  # noqa: BLE001
+        print(f"    get_api_info: {type(error).__name__}: {error}")
+    try:
+        data = dgi.get_data(rid, api_key=KEY, num_results=2)
+        if data is not None and len(data):
+            print(f"    columns: {list(data.columns)}")
+            print(f"    row 0: {data.iloc[0].to_dict()}")
+        else:
+            print("    (no rows returned)")
+    except Exception as error:  # noqa: BLE001
+        print(f"    get_data: {type(error).__name__}: {error}")
+
+banner("Done")
+print("Want: a resource whose columns include a project NAME plus original and")
+print("revised COST, and original and anticipated COMPLETION DATE.")

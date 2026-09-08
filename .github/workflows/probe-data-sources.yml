@@ -20,6 +20,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install the data.gov.in client
+        run: pip install --quiet datagovindia pandas
+
       - name: Search the catalogue and describe what it finds
         env:
           DATA_GOV_IN_KEY: ${{ secrets.DATA_GOV_IN_KEY }}
