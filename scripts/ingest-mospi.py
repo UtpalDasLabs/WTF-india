@@ -49,6 +49,10 @@ MONTHS = [
 ]
 MONTH_INDEX = {name.lower()[:3]: number for number, name in enumerate(MONTHS, start=1)}
 
+# How many report URLs to probe before giving up, so a throttling host cannot
+# keep a runner busy until the job times out.
+MAX_PROBES = 60
+
 # One crore rupees. The report is denominated in crore throughout.
 CRORE = 10_000_000
 
@@ -64,6 +68,25 @@ def banner(text: str) -> None:
 
 
 # ---------------------------------------------------------------- fetching
+
+
+def head(url: str, timeout: int = 20) -> int:
+    """
+    Is this report there? Asking with HEAD keeps a wrong guess cheap.
+
+    It matters because the fallback list is long: probing each candidate with a
+    full GET on a slow or throttling host turns a handful of 404s into minutes
+    of dead waiting, and a run that should take two minutes into one that hits
+    the job timeout.
+    """
+    request = urllib.request.Request(url, headers={"User-Agent": UA}, method="HEAD")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return response.status
+    except urllib.error.HTTPError as error:
+        return error.code
+    except Exception:  # noqa: BLE001 - unreachable is just "not this one"
+        return 0
 
 
 def fetch(url: str, timeout: int = 120) -> tuple[int, bytes]:
@@ -166,12 +189,19 @@ def newest_report(explicit: str | None) -> tuple[bytes, str]:
     else:
         say("\n  No links found; falling back to filename patterns.")
 
-    for url in [*discovered, *guessed_urls()]:
-        status, body = fetch(url, timeout=90)
-        if status == 200 and body[:4] == b"%PDF":
+    # Cheap HEAD probes first, then one real download. Capped so a host that has
+    # started refusing us cannot keep the runner busy until the job times out.
+    candidates = [*discovered, *guessed_urls()][:MAX_PROBES]
+    for url in candidates:
+        status = head(url)
+        if status != 200:
+            say(f"  {status:>3}  {url}")
+            continue
+        code, body = fetch(url, timeout=180)
+        if code == 200 and body[:4] == b"%PDF":
             say(f"\n  using {url} ({len(body):,} bytes)")
             return body, url
-        say(f"  {status:>3}  {url}")
+        say(f"  {code:>3}  (HEAD said 200 but the body was not a PDF)  {url}")
 
     sys.exit(
         "No Flash Report could be fetched from either the listing pages or the "
