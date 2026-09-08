@@ -22,6 +22,15 @@ on:
   schedule:
     # Early on the 8th: the flash report for a month lands in the first week.
     - cron: "20 2 8 * *"
+  # Changing the parser re-runs it against the real document, in inspect mode.
+  # A parser that still passes its unit tests but no longer finds a single table
+  # in the actual report is broken, and this is the only place that can tell —
+  # the sandbox where it gets written cannot reach mospi.gov.in.
+  push:
+    paths:
+      - scripts/ingest-mospi.py
+      - scripts/test_ingest_mospi.py
+      - .github/workflows/ingest-mospi.yml
 
 permissions:
   contents: write
@@ -33,6 +42,19 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+
+      # A push is a check on the pipeline, not a data refresh: it looks, reports
+      # and writes nothing.
+      - name: Decide whether this run writes data
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.inspect }}" = "true" ]; then
+            echo "inspect=--inspect" >> "$GITHUB_OUTPUT"
+            echo "writes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "inspect=" >> "$GITHUB_OUTPUT"
+            echo "writes=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/setup-python@v5
         with:
@@ -54,7 +76,7 @@ jobs:
         run: |
           python -u scripts/ingest-mospi.py \
             ${{ inputs.url && format('--url {0}', inputs.url) || '' }} \
-            ${{ inputs.inspect && '--inspect' || '' }}
+            ${{ steps.mode.outputs.inspect }}
 
       - name: Keep the extraction log whatever happens
         if: always()
@@ -65,7 +87,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Open a pull request with the data
-        if: ${{ !inputs.inspect }}
+        if: steps.mode.outputs.writes == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           branch: data/mospi-refresh
