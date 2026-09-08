@@ -168,6 +168,94 @@ placeless = ingest.rows_from_table(
 check("unplaced has no coordinates", placeless[0]["latitude"], None)
 check("unplaced has no district", placeless[0]["district"], None)
 
+# --------------------------------------------------- the real report layout
+
+# What MoSPI actually publishes, taken from the header the first live run found.
+# It packs original and latest into ONE cell, and carries its own state and
+# sector columns. Reading that cell as a single figure is what made the first
+# run drop 417 of 505 rows.
+REAL_HEADER = [
+    "State",
+    "Sector",
+    "Sl No",
+    "Project Name (Agency Name) (Project Code)",
+    "Date of Approval (MM/YYYY)",
+    "Date of Commissioning Original (Revised/Anticipated)",
+    "Cost Original (Revised) {Anticipated} in Rs. Crore",
+    "Cumulative Expenditure in Rs. Crore",
+    "Physical Progress (%)",
+]
+real_map = ingest.classify(REAL_HEADER)
+check(
+    "real header classified",
+    [real_map.get(index) for index in range(len(REAL_HEADER))],
+    [
+        "state_col",
+        "sector_col",
+        "serial",
+        "name",
+        None,
+        "date_combined",
+        "cost_combined",
+        "expenditure",
+        None,
+    ],
+)
+
+# A separate code column must be consumed, not read as the project's name.
+check(
+    "standalone code column is not the name",
+    ingest.classify(["Sl No", "Project Code", "Project Name", "Original Cost"]),
+    {0: "serial", 1: "code", 2: "name", 3: "original_cost"},
+)
+
+check("combined cost", ingest.split_combined("335.32 (450.00) {460.00}"), ("335.32    ", "460.00"))
+check("combined date", ingest.split_combined("03/2019 (06/2026)"), ("03/2019  ", "06/2026"))
+check("no bracket means no revision", ingest.split_combined("282.00")[1], "")
+
+real_stats = ingest.Stats()
+real_rows = ingest.rows_from_table(
+    [
+        REAL_HEADER,
+        [
+            "CHHATTISGARH",
+            "Road Transport & Highways",
+            "10",
+            "REHABILITATION AND UPGRADATION OF NH 111 FROM KM 163.400 TO 215.800 "
+            "SHIVNAGAR TO AMBIKAPUR SECTION (MoRTH) (N24001218) (CHHATTISGARH)",
+            "05/2018",
+            "03/2021 (09/2027)",
+            "335.32 (480.00)",
+            "210.00",
+            "62",
+        ],
+    ],
+    "Petroleum",  # a wrong page-level guess the state and sector columns must beat
+    12,
+    places,
+    states,
+    real_stats,
+    set(),
+)
+check("real row kept", len(real_rows), 1)
+real = real_rows[0]
+check(
+    "brackets stripped from the name",
+    real["name"],
+    "Rehabilitation and Upgradation of NH 111 from KM 163.400 to 215.800 Shivnagar to Ambikapur Section",
+)
+check("agency pulled out of the name", real["department"], "MoRTH")
+check("original cost from the combined cell", real["original_cost_inr"], int(335.32 * CRORE))
+check("revised cost from the combined cell", real["revised_cost_inr"], int(480 * CRORE))
+check("original date from the combined cell", real["original_end_date"], "2021-03-01")
+check("revised date from the combined cell", real["revised_end_date"], "2027-09-01")
+check("sector column beats the page guess", real["sector"], "Road Transport & Highways")
+check("state column used", real["state"], "Chhattisgarh")
+
+# Title casing must not flatten the acronyms and chainages that carry meaning.
+check("acronyms kept", ingest.title_case("NH 111 SECTION (MoRTH)"), "NH 111 Section (MoRTH)")
+check("mixed case left alone", ingest.title_case("Jaipur Metro Rail"), "Jaipur Metro Rail")
+
 # ------------------------------------------------------------------ status
 
 check(

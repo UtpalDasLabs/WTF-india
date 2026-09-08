@@ -314,6 +314,89 @@ def parse_month_year(value: str) -> str | None:
     return None
 
 
+def split_combined(value: str) -> tuple[str, str]:
+    """
+    MoSPI packs two figures into one cell: "Cost Original (Revised) {Anticipated}"
+    and "Date of Commissioning Original (Revised/Anticipated)". The bare figure is
+    the original promise; the bracketed one is what the agency now expects.
+
+    Returns (original_text, latest_text). Anticipated wins over revised when both
+    are printed, because anticipated is the more recent of the two.
+    """
+    text = clean(value)
+    anticipated = re.findall(r"\{([^}]*)\}", text)
+    revised = re.findall(r"\(([^)]*)\)", text)
+    original = re.sub(r"\{[^}]*\}|\([^)]*\)", " ", text)
+    latest = (anticipated[-1] if anticipated else "") or (revised[-1] if revised else "")
+    return original, latest
+
+
+PROJECT_CODE = re.compile(r"^[A-Z]{1,3}\d{5,}$")
+
+# Tokens that are acronyms or measurements, not words, and must not be title-cased.
+KEEP_AS_IS = {
+    "NH", "SH", "KM", "PKG", "MW", "KV", "LNG", "CGD", "STPP", "TPS", "HEP", "RCC",
+    "MORTH", "NHIDCL", "NHAI", "BRO", "CPWD", "RVNL", "DFCCIL", "NTPC", "ONGC",
+    "GAIL", "IOCL", "BPCL", "HPCL", "SAIL", "DMRC", "MRVC", "IRCON", "BSNL", "ISRO",
+    "NEEPCO", "THDC", "SJVN", "NPCIL", "DVC", "KRCL", "MMRDA", "CIDCO", "II", "III", "IV",
+}
+SMALL_WORDS = {
+    "and", "of", "to", "from", "the", "for", "in", "on", "at", "with", "by", "a", "an",
+    "via", "near", "into", "over", "under", "between",
+}
+
+
+def title_case(text: str) -> str:
+    """
+    The report is set entirely in capitals, which reads as shouting on a page that
+    is trying to be believed. This restores sentence case without flattening the
+    acronyms and chainages that carry the meaning — NH 111, KM 163.400, MoRTH.
+    """
+    letters = [character for character in text if character.isalpha()]
+    # Not .isupper(): "NH 111 SECTION (MoRTH)" is plainly shouting, but the one
+    # lowercase letter in the agency's name makes .isupper() false.
+    if not letters or sum(character.isupper() for character in letters) / len(letters) < 0.8:
+        return text
+    words: list[str] = []
+    for index, token in enumerate(text.split()):
+        core = token.strip("(),.;:-")
+        if re.search(r"\d", token) or core.upper() in KEEP_AS_IS:
+            words.append(token)
+        elif index > 0 and core.lower() in SMALL_WORDS:
+            words.append(token.lower())
+        else:
+            words.append(token.capitalize())
+    return " ".join(words)
+
+
+def split_name(raw: str, states: dict[str, str]) -> tuple[str, str | None]:
+    """
+    "NAME (AGENCY) (CODE) (STATE)" -> a readable name, and the agency.
+
+    The trailing brackets are metadata the report appends to every row; leaving
+    them in a headline makes every project look like a filing reference rather
+    than a road somebody drives on.
+    """
+    agency: str | None = None
+    for group in re.findall(r"\(([^)]*)\)", raw):
+        candidate = clean(group)
+        if not candidate or PROJECT_CODE.match(candidate) or candidate.lower() in states:
+            continue
+        if agency is None:
+            agency = candidate
+
+    name = raw
+    # Strip trailing bracket groups one at a time; a bracket in the middle of a
+    # name ("Package IV") is part of the name and stays.
+    while True:
+        stripped = re.sub(r"\s*\([^()]*\)\s*$", "", name).strip()
+        if stripped == name:
+            break
+        name = stripped
+
+    return title_case(clean(name)), agency
+
+
 def parse_int(value: str) -> int | None:
     text = clean(value).replace(",", "")
     match = re.search(r"-?\d+", text)
@@ -323,18 +406,32 @@ def parse_int(value: str) -> int | None:
 # Column classification. The report's headers are not stable between years, so
 # columns are identified by what the words mean rather than by position.
 COLUMN_RULES: list[tuple[str, list[str], list[str]]] = [
-    # (field, must contain any of, must not contain any of)
+    # (field, header must contain any of, and none of)
+    #
+    # Order matters: the combined columns are checked before the plain ones,
+    # because "cost original (revised) {anticipated}" contains the word "cost"
+    # and would otherwise be read as a single figure — which is how the first
+    # real run threw away 417 of 505 rows.
     ("serial", ["sl. no", "sl.no", "sl no", "s. no", "s.no", "serial"], []),
-    ("name", ["project name", "name of project", "name of the project", "project"], ["cost", "date", "status"]),
+    # Checked before "name" so a standalone code column is consumed rather than
+    # mistaken for the project's name. It cannot swallow the real name column,
+    # which says "name" — as in "Project Name (Agency Name) (Project Code)".
+    ("code", ["project code", "project id"], ["name"]),
+    ("name", ["project name", "name of project", "projects", "project"], ["cost", "date", "status"]),
+    # Matched on the bracket that holds the revision, not merely on the word
+    # "cost": "Original Cost (Rs. crore)" is a single figure and must not be
+    # split, while "Cost Original (Revised) {Anticipated}" holds two.
+    ("cost_combined", ["cost original (", "cost original{", "original cost (revised"], []),
+    ("date_combined", ["commissioning original ("], []),
     ("original_cost", ["original cost", "orig. cost", "sanctioned cost", "approved cost"], []),
     ("revised_cost", ["anticipated cost", "revised cost", "latest cost", "current cost"], []),
-    ("original_date", ["original date", "original commissioning", "original schedule", "orig. date"], []),
-    ("revised_date", ["anticipated date", "revised date", "latest date", "anticipated commissioning"], []),
+    ("original_date", ["original date", "original schedule", "orig. date"], []),
+    ("revised_date", ["anticipated date", "revised date", "latest date"], []),
     ("expenditure", ["cumulative expenditure", "expenditure", "expdr"], []),
-    ("cost_overrun", ["cost overrun"], []),
     ("time_overrun", ["time overrun", "delay (in months)", "delay in months"], []),
-    ("status_text", ["status"], []),
-    ("agency", ["agency", "ministry", "department", "implementing"], []),
+    ("state_col", ["state"], []),
+    ("sector_col", ["sector"], []),
+    ("agency", ["agency", "ministry", "department", "implementing"], ["project name"]),
 ]
 
 
@@ -411,16 +508,32 @@ def rows_from_table(
             for index, field_name in mapping.items()
         }
 
-        name = values.get("name", "")
+        raw_name = values.get("name", "")
         # Continuation and subtotal lines carry no usable project name.
-        if len(name) < 8 or name.lower().startswith(("total", "sub total", "grand total")):
+        if len(raw_name) < 8 or raw_name.lower().startswith(("total", "sub total", "grand total")):
             stats.dropped_no_name += 1
             continue
 
-        original_cost = parse_money_crore(values.get("original_cost", ""))
-        revised_cost = parse_money_crore(values.get("revised_cost", ""))
-        original_date = parse_month_year(values.get("original_date", ""))
-        revised_date = parse_month_year(values.get("revised_date", ""))
+        name, agency = split_name(raw_name, states)
+
+        # The report prints original and latest in one cell far more often than
+        # it gives them separate columns, so read the combined form first and
+        # fall back to any single-purpose columns.
+        cost_original, cost_latest = split_combined(values.get("cost_combined", ""))
+        date_original, date_latest = split_combined(values.get("date_combined", ""))
+
+        original_cost = parse_money_crore(cost_original) or parse_money_crore(
+            values.get("original_cost", "")
+        )
+        revised_cost = parse_money_crore(cost_latest) or parse_money_crore(
+            values.get("revised_cost", "")
+        )
+        original_date = parse_month_year(date_original) or parse_month_year(
+            values.get("original_date", "")
+        )
+        revised_date = parse_month_year(date_latest) or parse_month_year(
+            values.get("revised_date", "")
+        )
 
         # A row with neither money nor a date says nothing we can use, and
         # inventing either is the one thing this must never do.
@@ -434,7 +547,12 @@ def rows_from_table(
             continue
         seen_refs.add(ref)
 
-        district, state, lat, lng = locate(name, places, states)
+        # The report has its own state and sector columns; trust those over
+        # anything inferred, and only fall back to reading the project's name.
+        district, state, lat, lng = locate(raw_name, places, states)
+        column_state = states.get(clean(values.get("state_col", "")).lower())
+        if column_state:
+            state = column_state
         if lat is not None:
             stats.located_city += 1
         elif state:
@@ -446,8 +564,8 @@ def rows_from_table(
             {
                 "external_ref": ref,
                 "name": name,
-                "sector": sector,
-                "department": values.get("agency") or None,
+                "sector": clean(values.get("sector_col", "")).title() or sector,
+                "department": agency or values.get("agency") or None,
                 "state": state,
                 "district": district,
                 "latitude": lat,
@@ -527,21 +645,39 @@ def status_for(row: dict, today: date) -> str:
 
 
 def summarise(row: dict) -> str:
-    parts: list[str] = []
-    if row.get("original_cost_inr"):
-        parts.append(f"Sanctioned at ₹{row['original_cost_inr'] / CRORE:,.0f} crore")
-    if row.get("revised_cost_inr") and row.get("original_cost_inr"):
-        overrun = row["revised_cost_inr"] - row["original_cost_inr"]
-        if overrun > 0:
-            parts.append(f"now expected to cost ₹{row['revised_cost_inr'] / CRORE:,.0f} crore")
-    if row.get("original_end_date"):
-        parts.append(f"originally due {row['original_end_date'][:7]}")
-    if row.get("revised_end_date") and row.get("revised_end_date") != row.get("original_end_date"):
-        parts.append(f"now expected {row['revised_end_date'][:7]}")
+    """
+    One plain sentence a person can read without knowing what a flash report is.
+    Built only from figures the report published, so it says less about a
+    thinly-documented project rather than padding it out.
+    """
     place = row.get("district") or row.get("state")
-    if place:
-        parts.append(f"in {place}")
-    return ". ".join(parts) + "." if parts else "Listed in MoSPI's monthly flash report."
+    where = f" in {place}" if place else ""
+
+    original = row.get("original_cost_inr")
+    revised = row.get("revised_cost_inr")
+    due = row.get("original_end_date")
+    now_due = row.get("revised_end_date")
+
+    parts: list[str] = []
+    if original:
+        opening = f"Sanctioned at ₹{original / CRORE:,.0f} crore{where}"
+        if revised and revised > original:
+            opening += f", now expected to cost ₹{revised / CRORE:,.0f} crore"
+        parts.append(opening)
+    elif where:
+        parts.append(f"A central government project{where}")
+
+    if due:
+        promised = f"Promised by {due[:7]}"
+        if now_due and now_due != due:
+            promised += f", now expected {now_due[:7]}"
+        parts.append(promised)
+    elif now_due:
+        parts.append(f"Expected {now_due[:7]}")
+
+    if not parts:
+        return "Listed in MoSPI's monthly flash report on central sector projects."
+    return ". ".join(parts) + "."
 
 
 def shape(rows: list[dict], source_url: str, today: date) -> list[dict]:
