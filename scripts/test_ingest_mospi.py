@@ -77,6 +77,19 @@ check(
     ["FlashReport_Dec_2024.pdf", "FlashReport_May_2024.pdf", "FlashReport_Mar_2024.pdf"],
 )
 
+# A run must never end with nothing because the guesses ran out just short of a
+# report that exists: the verified anchors sit past the cap, not inside it.
+check("anchors exist", len(ingest.KNOWN_REPORTS) >= 1, True)
+# Even with an absurdly tight cap, a run still ends at a report that exists.
+tiny = ingest.candidate_list([], cap=3)
+check("anchors survive the cap", tiny[-len(ingest.KNOWN_REPORTS) :], ingest.KNOWN_REPORTS)
+check("cap still applied to guesses", len(tiny), 3 + len(ingest.KNOWN_REPORTS))
+check(
+    "discovered links are tried first",
+    ingest.candidate_list(["https://x/FlashReport_Jan_2026.pdf"], cap=2)[0],
+    "https://x/FlashReport_Jan_2026.pdf",
+)
+
 # ------------------------------------------------------------------ columns
 
 header = [

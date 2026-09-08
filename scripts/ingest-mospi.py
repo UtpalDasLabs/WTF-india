@@ -51,7 +51,7 @@ MONTH_INDEX = {name.lower()[:3]: number for number, name in enumerate(MONTHS, st
 
 # How many report URLs to probe before giving up, so a throttling host cannot
 # keep a runner busy until the job times out.
-MAX_PROBES = 60
+MAX_PROBES = 120
 
 # One crore rupees. The report is denominated in crore throughout.
 CRORE = 10_000_000
@@ -114,6 +114,15 @@ LISTING_URLS = [
 
 PDF_LINK = re.compile(rb'href="([^"]+\.pdf)"', re.I)
 
+# Reports this pipeline has actually downloaded and parsed. They are tried last,
+# after everything newer, so a run always ends with real data rather than
+# nothing — the alternative is an empty database because a guess ran out of
+# attempts three months short of a report that exists.
+KNOWN_REPORTS = [
+    f"{BASE}/FlashReport_September_2024.pdf",
+    f"{BASE}/FlashReport_May_2024.pdf",
+]
+
 
 def report_date(url: str) -> tuple[int, int]:
     """Sort key from a report filename: (year, month), zero when unreadable."""
@@ -173,6 +182,19 @@ def guessed_urls(months_back: int = 44) -> list[str]:
     return urls
 
 
+def candidate_list(discovered: list[str], cap: int = MAX_PROBES) -> list[str]:
+    """
+    What to probe, in order: links MoSPI published, then guesses newest-first,
+    then the reports we have already downloaded successfully.
+
+    The cap applies to the speculative part only. A previous run gave up three
+    months short of a report that exists because the guess list was capped as a
+    whole, so the anchors sit outside the cap by construction.
+    """
+    speculative = [url for url in [*discovered, *guessed_urls()] if url not in KNOWN_REPORTS]
+    return [*speculative[:cap], *KNOWN_REPORTS]
+
+
 def newest_report(explicit: str | None) -> tuple[bytes, str]:
     if explicit:
         status, body = fetch(explicit)
@@ -191,8 +213,7 @@ def newest_report(explicit: str | None) -> tuple[bytes, str]:
 
     # Cheap HEAD probes first, then one real download. Capped so a host that has
     # started refusing us cannot keep the runner busy until the job times out.
-    candidates = [*discovered, *guessed_urls()][:MAX_PROBES]
-    for url in candidates:
+    for url in candidate_list(discovered):
         status = head(url)
         if status != 200:
             say(f"  {status:>3}  {url}")
