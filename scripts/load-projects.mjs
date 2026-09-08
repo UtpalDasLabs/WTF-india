@@ -99,8 +99,9 @@ for (let index = 0; index < payload.length; index += BATCH) {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
       // merge-duplicates makes this an upsert; without it a re-run fails on the
-      // unique index instead of updating what changed.
-      Prefer: "resolution=merge-duplicates,return=minimal",
+      // unique index instead of updating what changed. The rows come back so
+      // their ids can be used for the citations below.
+      Prefer: "resolution=merge-duplicates,return=representation",
     },
     body: JSON.stringify(batch),
   });
@@ -109,8 +110,45 @@ for (let index = 0; index < payload.length; index += BATCH) {
     console.error(`Batch at ${index} failed: ${response.status} ${await response.text()}`);
     process.exit(1);
   }
+
+  // Every project carries the document and page it came from. This is not
+  // decoration: the product's claim is that any figure on the page can be
+  // checked against a government record, and a project with no citation is one
+  // a reader has to take on trust. The page number is what makes it checkable
+  // in a 250-page PDF rather than nominally checkable.
+  const saved = await response.json();
+  const byRef = new Map(saved.map((row) => [row.external_ref, row.id]));
+  const citations = rows
+    .slice(index, index + BATCH)
+    .filter((row) => byRef.has(row.external_ref))
+    .map((row) => ({
+      project_id: byRef.get(row.external_ref),
+      title: `MoSPI Flash Report on Central Sector Projects, page ${row.source_page}`,
+      url: row.source_url,
+      publisher: "Ministry of Statistics and Programme Implementation",
+      source_type: "government_portal",
+      verification_status: "verified",
+      confidence: 0.9,
+      last_verified_at: new Date().toISOString(),
+    }));
+
+  const cited = await fetch(`${url}/rest/v1/project_sources`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(citations),
+  });
+  if (!cited.ok) {
+    console.error(`Citations at ${index} failed: ${cited.status} ${await cited.text()}`);
+    process.exit(1);
+  }
+
   done += batch.length;
-  console.log(`  upserted ${done}/${payload.length}`);
+  console.log(`  upserted ${done}/${payload.length} (with citations)`);
 }
 
-console.log(`Loaded ${done} projects.`);
+console.log(`Loaded ${done} projects, each citing the report page it came from.`);
