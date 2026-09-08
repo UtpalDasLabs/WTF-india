@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConstitutionRouteImport } from './routes/constitution'
+import { Route as ShameRouteImport } from './routes/shame'
 import { Route as SuggestRouteImport } from './routes/suggest'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 
@@ -36,6 +37,11 @@ const ConstitutionRoute = ConstitutionRouteImport.update({
   path: '/constitution',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShameRoute = ShameRouteImport.update({
+  id: '/shame',
+  path: '/shame',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuggestRoute = SuggestRouteImport.update({
   id: '/suggest',
   path: '/suggest',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
+  '/shame': typeof ShameRoute
   '/suggest': typeof SuggestRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
+  '/shame': typeof ShameRoute
   '/suggest': typeof SuggestRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
+  '/shame': typeof ShameRoute
   '/suggest': typeof SuggestRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/constitution'
+    | '/shame'
     | '/suggest'
     | '/projects/$projectId'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/constitution'
+    | '/shame'
     | '/suggest'
     | '/projects/$projectId'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/constitution'
+    | '/shame'
     | '/suggest'
     | '/projects/$projectId'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ConstitutionRoute: typeof ConstitutionRoute
+  ShameRoute: typeof ShameRoute
   SuggestRoute: typeof SuggestRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
 }
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConstitutionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shame': {
+      id: '/shame'
+      path: '/shame'
+      fullPath: '/shame'
+      preLoaderRoute: typeof ShameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/suggest': {
       id: '/suggest'
       path: '/suggest'
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ConstitutionRoute: ConstitutionRoute,
+  ShameRoute: ShameRoute,
   SuggestRoute: SuggestRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
 }
