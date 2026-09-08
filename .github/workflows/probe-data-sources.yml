@@ -13,6 +13,8 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
+    # The client's metadata sync can sit for a long time; never tie up a runner.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -26,4 +28,7 @@ jobs:
       - name: Search the catalogue and describe what it finds
         env:
           DATA_GOV_IN_KEY: ${{ secrets.DATA_GOV_IN_KEY }}
-        run: python scripts/probe-data-gov.py
+          # Without this, Python buffers stdout and the log stays empty until the
+          # process exits — which made a slow run indistinguishable from a hung one.
+          PYTHONUNBUFFERED: "1"
+        run: python -u scripts/probe-data-gov.py
