@@ -256,6 +256,25 @@ function Discover() {
     return withDistance;
   }, [projects.data, search, statuses, here, activeCity, typedCity]);
 
+  // Most of the country has nothing tracked in it yet, so picking your city is
+  // very likely to return nothing at all. Rather than a dead end, fall back to
+  // the closest projects we do have and say plainly how far away they are.
+  const nearest = useMemo(() => {
+    if (!activeCity) return [];
+    return (projects.data ?? [])
+      .filter((project) => project.published)
+      .map((project) => ({
+        project,
+        distance:
+          project.latitude != null && project.longitude != null
+            ? distanceKm(activeCity.lat, activeCity.lng, project.latitude, project.longitude)
+            : null,
+      }))
+      .filter((item): item is { project: Project; distance: number } => item.distance != null)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 3);
+  }, [projects.data, activeCity]);
+
   const toggleStatus = (status: ProjectStatus) =>
     setStatuses((current) =>
       current.includes(status) ? current.filter((item) => item !== status) : [...current, status],
@@ -312,6 +331,23 @@ function Discover() {
           Suggest a project
         </Link>
       </div>
+
+      {nearest.length > 0 ? (
+        <div className="mt-8 border-t border-border pt-6 text-left">
+          <p className="eyebrow text-muted-foreground">The closest ones we do track</p>
+          <ul className="mt-3 space-y-3">
+            {nearest.map(({ project, distance }) => (
+              <li key={project.id}>
+                <ProjectCard
+                  project={project}
+                  distance={distance}
+                  rating={ratings.data?.[project.id] ?? null}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   ) : (
     <ul className="space-y-3">
