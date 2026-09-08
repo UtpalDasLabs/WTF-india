@@ -13,6 +13,13 @@ const isGithubPages = process.env["GITHUB_PAGES"] === "true";
 // Must keep the leading and trailing slash, e.g. "/WTF-india/".
 const base = process.env["BASE_PATH"] || "/";
 
+// Stamped into the bundle so anyone looking at the running app can say exactly
+// which commit it came from. Without this, "I still see the old version" is
+// unanswerable: a stale browser cache, an old sideloaded APK and a failed deploy
+// all look identical from the outside.
+const buildCommit = (process.env["GITHUB_SHA"] || "dev").slice(0, 7);
+const buildTime = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+
 export default defineConfig({
   ...(isGithubPages
     ? {
@@ -21,6 +28,10 @@ export default defineConfig({
         define: { "import.meta.env.VITE_STATIC_DEPLOY": JSON.stringify("true") },
       }
     : {}),
+  define: {
+    __BUILD_COMMIT__: JSON.stringify(buildCommit),
+    __BUILD_TIME__: JSON.stringify(buildTime),
+  },
   resolve: {
     // Keep a single copy of these, or hooks and router context break across chunks.
     dedupe: [

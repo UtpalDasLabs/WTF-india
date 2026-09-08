@@ -5,6 +5,7 @@ import { Compass, PlusCircle, ScrollText, ShieldCheck, UserRound } from "lucide-
 import { WtfLogo } from "@/components/wtf/logo";
 import { ApkDownloadLink } from "@/components/wtf/apk-download";
 import { useSession } from "@/hooks/use-session";
+import { BUILD_COMMIT, BUILD_TIME, REPO_COMMIT_URL } from "@/lib/build-info";
 import { cn } from "@/lib/utils";
 
 /**
@@ -83,10 +84,22 @@ export function AppShell({
             chromeWidth,
           )}
         >
-          <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">
-            Facts and timelines come from official sources and are checked by a reviewer. Ratings,
-            reviews and photos come from the public and are kept separate.
-          </p>
+          <div className="max-w-xl">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Facts and timelines come from official sources and are checked by a reviewer. Ratings,
+              reviews and photos come from the public and are kept separate.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Build{" "}
+              <a
+                href={REPO_COMMIT_URL}
+                className="font-mono underline underline-offset-2 hover:text-foreground"
+              >
+                {BUILD_COMMIT}
+              </a>{" "}
+              · {BUILD_TIME}
+            </p>
+          </div>
           <ApkDownloadLink variant="quiet" />
         </div>
       </footer>
@@ -122,6 +135,10 @@ export function AppShell({
           })}
         </ul>
       </nav>
+
+      <p className="px-4 pb-2 text-center text-[10px] text-muted-foreground md:hidden">
+        Build <span className="font-mono">{BUILD_COMMIT}</span> · {BUILD_TIME}
+      </p>
     </div>
   );
 }
