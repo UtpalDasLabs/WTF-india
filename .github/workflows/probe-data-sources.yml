@@ -22,6 +22,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install PDF tooling
+        run: pip install --quiet pdfplumber
+
       - name: Search the catalogue and describe what it finds
         env:
           DATA_GOV_IN_KEY: ${{ secrets.DATA_GOV_IN_KEY }}
@@ -29,3 +32,9 @@ jobs:
           # process exits — which made a slow run indistinguishable from a hung one.
           PYTHONUNBUFFERED: "1"
         run: python -u scripts/probe-data-gov.py
+
+      - name: Can the MoSPI flash report PDFs be parsed?
+        if: always()
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python -u scripts/probe-mospi-pdf.py
