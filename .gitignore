@@ -30,3 +30,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python bytecode from running the ingestion scripts locally
+__pycache__/
+*.pyc

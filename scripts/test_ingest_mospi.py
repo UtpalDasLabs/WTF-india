@@ -55,6 +55,28 @@ check("bare year is not enough", ingest.parse_month_year("2019"), None)
 check("blank date", ingest.parse_month_year(""), None)
 check("month 13 rejected", ingest.parse_month_year("13/2019"), None)
 
+# ------------------------------------------------------------- report naming
+
+# "_" is a word character, so a \b before the month name never matches a real
+# filename and every report sorts as month zero — which silently picks an
+# arbitrary report as "newest".
+check("May 2024 filename", ingest.report_date("https://x/FlashReport_May_2024.pdf"), (2024, 5))
+check("full month name", ingest.report_date("https://x/Flash_Report_January_2026.pdf"), (2026, 1))
+check("short month name", ingest.report_date("https://x/FlashReport_Sep_2025.pdf"), (2025, 9))
+check("unreadable name", ingest.report_date("https://x/report.pdf"), (0, 0))
+check(
+    "newest first within one year",
+    [
+        url.rsplit("/", 1)[-1]
+        for url in sorted(
+            ["a/FlashReport_Mar_2024.pdf", "a/FlashReport_Dec_2024.pdf", "a/FlashReport_May_2024.pdf"],
+            key=ingest.report_date,
+            reverse=True,
+        )
+    ],
+    ["FlashReport_Dec_2024.pdf", "FlashReport_May_2024.pdf", "FlashReport_Mar_2024.pdf"],
+)
+
 # ------------------------------------------------------------------ columns
 
 header = [

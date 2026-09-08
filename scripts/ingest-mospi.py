@@ -78,19 +78,75 @@ def fetch(url: str, timeout: int = 120) -> tuple[int, bytes]:
         return 0, b""
 
 
-def candidate_urls(limit: int = 18) -> list[str]:
-    """Newest first. The filename pattern has drifted, so try both spellings."""
-    today = date.today()
+# Pages that list the flash reports. Guessing filenames is how the data.gov.in
+# attempt died, so links are read out of MoSPI's own pages first and the guesses
+# are only a fallback.
+LISTING_URLS = [
+    "https://www.mospi.gov.in/publication/flash-report-central-sector-projects",
+    "https://www.mospi.gov.in/flash-report-central-sector-projects",
+    "https://www.mospi.gov.in/infrastructure-and-project-monitoring",
+    "https://www.mospi.gov.in/publication",
+    "https://www.mospi.gov.in/archive/publications",
+]
+
+PDF_LINK = re.compile(rb'href="([^"]+\.pdf)"', re.I)
+
+
+def report_date(url: str) -> tuple[int, int]:
+    """Sort key from a report filename: (year, month), zero when unreadable."""
+    name = url.rsplit("/", 1)[-1]
+    year = re.search(r"(20\d{2})", name)
+    month = 0
+    for index, full in enumerate(MONTHS, start=1):
+        # Not \b: filenames separate words with "_", which is a word character,
+        # so "\bMay" never matches "FlashReport_May_2024" and every report
+        # sorts as month zero.
+        if re.search(rf"(?<![A-Za-z]){full[:3]}", name, re.I):
+            month = index
+            break
+    return (int(year.group(1)) if year else 0, month)
+
+
+def discover_urls() -> list[str]:
+    """Flash-report PDFs linked from MoSPI's own listing pages, newest first."""
+    found: set[str] = set()
+    for listing in LISTING_URLS:
+        status, body = fetch(listing, timeout=45)
+        if status != 200 or not body:
+            say(f"  {status:>3}  {listing}")
+            continue
+        links = [link.decode("utf-8", "ignore") for link in PDF_LINK.findall(body)]
+        flash = [link for link in links if "flash" in link.lower()]
+        say(f"  200  {listing} — {len(links)} pdf links, {len(flash)} look like flash reports")
+        for link in flash:
+            if link.startswith("//"):
+                link = f"https:{link}"
+            elif link.startswith("/"):
+                link = f"https://www.mospi.gov.in{link}"
+            elif not link.startswith("http"):
+                continue
+            found.add(link)
+    return sorted(found, key=report_date, reverse=True)
+
+
+def guessed_urls(months_back: int = 44) -> list[str]:
+    """
+    Fallback when the listing pages give nothing. Reaches back far enough to
+    cover the reports we already know exist: a run in 2026 that only tried the
+    previous eighteen months found nothing at all, while May 2024 fetches fine.
+    """
     urls: list[str] = []
-    year, month = today.year, today.month
-    for _ in range(limit):
+    year, month = date.today().year, date.today().month
+    for _ in range(months_back):
         month -= 1
         if month == 0:
             year, month = year - 1, 12
         name = MONTHS[month - 1]
-        urls.append(f"{BASE}/FlashReport_{name}_{year}.pdf")
-        urls.append(f"{BASE}/FlashReport_{name[:3]}_{year}.pdf")
-        urls.append(f"{BASE}/Flash_Report_{name}_{year}.pdf")
+        urls += [
+            f"{BASE}/FlashReport_{name}_{year}.pdf",
+            f"{BASE}/FlashReport_{name[:3]}_{year}.pdf",
+            f"{BASE}/Flash_Report_{name}_{year}.pdf",
+        ]
     return urls
 
 
@@ -101,13 +157,26 @@ def newest_report(explicit: str | None) -> tuple[bytes, str]:
             return body, explicit
         sys.exit(f"Could not fetch {explicit} (status {status}).")
 
-    for url in candidate_urls():
-        status, body = fetch(url, timeout=60)
+    say("Reading MoSPI's listing pages for flash report links:")
+    discovered = discover_urls()
+    if discovered:
+        say(f"\n  {len(discovered)} linked reports, newest first:")
+        for url in discovered[:6]:
+            say(f"    {url}")
+    else:
+        say("\n  No links found; falling back to filename patterns.")
+
+    for url in [*discovered, *guessed_urls()]:
+        status, body = fetch(url, timeout=90)
         if status == 200 and body[:4] == b"%PDF":
-            say(f"  found {url} ({len(body):,} bytes)")
+            say(f"\n  using {url} ({len(body):,} bytes)")
             return body, url
         say(f"  {status:>3}  {url}")
-    sys.exit("No Flash Report could be fetched. The URL pattern has probably changed.")
+
+    sys.exit(
+        "No Flash Report could be fetched from either the listing pages or the "
+        "filename patterns. Pass one explicitly with --url."
+    )
 
 
 # ---------------------------------------------------------------- gazetteer
