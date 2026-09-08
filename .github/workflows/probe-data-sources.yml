@@ -1,0 +1,26 @@
+name: Probe data.gov.in
+
+# A diagnostic, not part of the build. The development sandbox cannot reach
+# data.gov.in, so this runs the lookup on a runner and prints what it finds into
+# the log. Run it by hand from the Actions tab whenever we need to find or
+# re-check a dataset.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Search the catalogue and describe what it finds
+        env:
+          DATA_GOV_IN_KEY: ${{ secrets.DATA_GOV_IN_KEY }}
+        run: python scripts/probe-data-gov.py
