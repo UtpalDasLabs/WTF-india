@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { List, LocateFixed, Map as MapIcon, Search, ShieldCheck } from "lucide-react";
@@ -9,7 +9,7 @@ import { AppShell } from "@/components/wtf/app-shell";
 import { ApkDownloadCard } from "@/components/wtf/apk-download";
 import { MapCanvas } from "@/components/wtf/map-canvas";
 import { ProjectCard } from "@/components/wtf/project-card";
-import { Welcome } from "@/components/wtf/welcome";
+import { Radar } from "@/components/wtf/radar";
 import { useFollow } from "@/hooks/use-follow";
 import { useLocation } from "@/hooks/use-location";
 import { useOnboarding } from "@/hooks/use-onboarding";
@@ -25,6 +25,7 @@ import {
   matchCityByText,
   normalizeText,
   projectInCity,
+  randomMetro,
   type CityOption,
   type ProjectStatus,
 } from "@/lib/wtf";
@@ -193,6 +194,23 @@ function Discover() {
   const [cityName, setCityName] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "map">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [scanned, setScanned] = useState(false);
+  // Where to start somebody who declines location. Fixed on mount so the answer
+  // cannot change under them while the radar is running.
+  const [fallbackCity] = useState(randomMetro);
+  const askedRef = useRef(false);
+
+  // The permission prompt goes up the moment a first-time visitor arrives, with
+  // the radar already turning behind it. Asking on arrival rather than behind a
+  // button is the whole point: the app should know what is near you before it
+  // asks you to do anything.
+  useEffect(() => {
+    if (onboarding.done !== false || askedRef.current) return;
+    askedRef.current = true;
+    if (location.state.status === "idle") location.request();
+    // location.request is stable; onboarding.done is the real trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboarding.done]);
 
   const here =
     location.state.status === "granted"
@@ -363,18 +381,32 @@ function Discover() {
     </ul>
   );
 
-  if (onboarding.done === false && location.state.status === "idle") {
+  // First run: scan, then hand over to the map with the pins already on it.
+  if (onboarding.done === false && !scanned) {
+    const declined = location.state.status === "denied" || location.state.status === "unavailable";
+    const origin =
+      location.state.status === "granted"
+        ? { lat: location.state.lat, lng: location.state.lng }
+        : declined
+          ? { lat: fallbackCity.lat, lng: fallbackCity.lng }
+          : null;
+
     return (
-      <Welcome
-        onPickCity={(city) => {
-          pickCity(city);
+      <Radar
+        projects={(projects.data ?? []).filter((project) => project.published)}
+        origin={origin}
+        placeLabel={declined ? fallbackCity.name : "you"}
+        approximate={declined}
+        onDone={() => {
+          // Declining location is not a dead end: it just means we start you in
+          // a large city instead, which you can change from the bar at the top.
+          // Only the origin is set, not the city *filter* — the map should show
+          // the pins the radar just found, not silently drop most of them.
+          if (declined) location.setManual(fallbackCity.lat, fallbackCity.lng, fallbackCity.name);
+          setScanned(true);
+          setView("map");
           onboarding.finish();
         }}
-        onUseLocation={() => {
-          location.request();
-          onboarding.finish();
-        }}
-        onSkip={onboarding.finish}
       />
     );
   }

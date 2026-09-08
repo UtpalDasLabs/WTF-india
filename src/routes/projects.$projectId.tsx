@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Building2, IndianRupee, MapPin } from "lucide-react";
+import { ArrowLeft, Building2, IndianRupee, MapPin, Users } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppShell } from "@/components/wtf/app-shell";
@@ -9,7 +9,8 @@ import { EvidencePanel } from "@/components/wtf/evidence-panel";
 import { ShareButton } from "@/components/wtf/share-button";
 import { StatusChip, VerificationChip } from "@/components/wtf/status-chip";
 import { VerifiedTimeline } from "@/components/wtf/timeline";
-import { milestonesQuery, projectQuery, sourcesQuery } from "@/lib/queries";
+import { milestonesQuery, projectQuery, reviewsQuery, sourcesQuery } from "@/lib/queries";
+import { useFollow } from "@/hooks/use-follow";
 import { computeDelay } from "@/lib/delay";
 import { formatBudget, formatDate } from "@/lib/wtf";
 
@@ -38,6 +39,8 @@ function ProjectDetail() {
   const project = useQuery(projectQuery(projectId));
   const sources = useQuery(sourcesQuery(projectId));
   const milestones = useQuery(milestonesQuery(projectId));
+  const reviews = useQuery(reviewsQuery(projectId));
+  const follow = useFollow();
 
   if (project.isLoading) {
     return (
@@ -87,7 +90,36 @@ function ProjectDetail() {
       <article className="mt-4 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
         <div className="space-y-5">
           <header>
-            <div className="flex flex-wrap items-center gap-3">
+            {/* The community banner. A project is a place people can be in, so
+                the page opens with where it is and a way to join, the way a
+                subreddit opens with its name and a Join button — the facts
+                below it are what that community is arguing about. */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-container p-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">
+                  w/{[data.district, data.state].filter(Boolean).join(", ") || "India"}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {reviews.data?.length ?? 0} {(reviews.data?.length ?? 0) === 1 ? "post" : "posts"}{" "}
+                  · anyone can add what they see on the ground
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => follow.toggle(data.id)}
+                aria-pressed={follow.isFollowing(data.id)}
+                className={
+                  follow.isFollowing(data.id)
+                    ? "m3-state inline-flex shrink-0 items-center gap-1.5 rounded-full border border-outline-variant px-4 py-2 text-sm font-semibold hover:bg-surface-container-high"
+                    : "m3-state inline-flex shrink-0 items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"
+                }
+              >
+                <Users className="size-4" aria-hidden />
+                {follow.isFollowing(data.id) ? "Joined" : "Join"}
+              </button>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <StatusChip status={data.status} />
               <VerificationChip status={data.verification_status} confidence={data.confidence} />
               {delay && delay.days > 0 ? (
