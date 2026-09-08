@@ -1,9 +1,4 @@
-export type ProjectStatus =
-  | "planned"
-  | "ongoing"
-  | "delayed"
-  | "completed"
-  | "finished_early";
+export type ProjectStatus = "planned" | "ongoing" | "delayed" | "completed" | "finished_early";
 
 export type VerifyStatus = "unverified" | "pending_review" | "verified" | "rejected";
 
@@ -93,12 +88,7 @@ export function confidencePercent(value: number | null | undefined): number {
 }
 
 /** Straight-line distance in km between two coordinates. */
-export function distanceKm(
-  aLat: number,
-  aLng: number,
-  bLat: number,
-  bLng: number,
-): number {
+export function distanceKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const R = 6371;
   const dLat = toRad(bLat - aLat);
@@ -119,38 +109,194 @@ export type CityOption = {
 };
 
 export const INDIAN_CITIES: CityOption[] = [
-  { name: "Mumbai", state: "Maharashtra", lat: 19.076, lng: 72.8777, aliases: ["bombay", "mumbai suburban", "mumbai city", "navi mumbai"] },
-  { name: "Pune", state: "Maharashtra", lat: 18.5204, lng: 73.8567, aliases: ["poona", "pimpri", "chinchwad"] },
+  {
+    name: "Kolkata",
+    state: "West Bengal",
+    lat: 22.5726,
+    lng: 88.3639,
+    aliases: ["calcutta", "howrah", "salt lake", "kmc"],
+  },
+  {
+    name: "Gurugram",
+    state: "Haryana",
+    lat: 28.4595,
+    lng: 77.0266,
+    aliases: ["gurgaon", "manesar"],
+  },
+  {
+    name: "Noida",
+    state: "Uttar Pradesh",
+    lat: 28.5355,
+    lng: 77.391,
+    aliases: ["greater noida", "gautam buddh nagar"],
+  },
+  { name: "Ghaziabad", state: "Uttar Pradesh", lat: 28.6692, lng: 77.4538 },
+  { name: "Faridabad", state: "Haryana", lat: 28.4089, lng: 77.3178 },
+  {
+    name: "Chandigarh",
+    state: "Chandigarh",
+    lat: 30.7333,
+    lng: 76.7794,
+    aliases: ["mohali", "panchkula"],
+  },
+  { name: "Vadodara", state: "Gujarat", lat: 22.3072, lng: 73.1812, aliases: ["baroda"] },
+  { name: "Rajkot", state: "Gujarat", lat: 22.3039, lng: 70.8022 },
+  { name: "Nashik", state: "Maharashtra", lat: 19.9975, lng: 73.7898, aliases: ["nasik"] },
+  {
+    name: "Chhatrapati Sambhajinagar",
+    state: "Maharashtra",
+    lat: 19.8762,
+    lng: 75.3433,
+    aliases: ["aurangabad"],
+  },
+  { name: "Amritsar", state: "Punjab", lat: 31.634, lng: 74.8723 },
+  { name: "Jalandhar", state: "Punjab", lat: 31.326, lng: 75.5762 },
+  { name: "Raipur", state: "Chhattisgarh", lat: 21.2514, lng: 81.6296, aliases: ["naya raipur"] },
+  { name: "Dehradun", state: "Uttarakhand", lat: 30.3165, lng: 78.0322 },
+  { name: "Jamshedpur", state: "Jharkhand", lat: 22.8046, lng: 86.2029, aliases: ["tatanagar"] },
+  { name: "Gwalior", state: "Madhya Pradesh", lat: 26.2183, lng: 78.1828 },
+  { name: "Jabalpur", state: "Madhya Pradesh", lat: 23.1815, lng: 79.9864 },
+  {
+    name: "Vijayawada",
+    state: "Andhra Pradesh",
+    lat: 16.5062,
+    lng: 80.648,
+    aliases: ["amaravati"],
+  },
+  { name: "Guntur", state: "Andhra Pradesh", lat: 16.3067, lng: 80.4365 },
+  { name: "Tiruchirappalli", state: "Tamil Nadu", lat: 10.7905, lng: 78.7047, aliases: ["trichy"] },
+  { name: "Salem", state: "Tamil Nadu", lat: 11.6643, lng: 78.146 },
+  { name: "Mangaluru", state: "Karnataka", lat: 12.9141, lng: 74.856, aliases: ["mangalore"] },
+  {
+    name: "Hubballi",
+    state: "Karnataka",
+    lat: 15.3647,
+    lng: 75.124,
+    aliases: ["hubli", "dharwad"],
+  },
+  { name: "Kozhikode", state: "Kerala", lat: 11.2588, lng: 75.7804, aliases: ["calicut"] },
+  { name: "Siliguri", state: "West Bengal", lat: 26.7271, lng: 88.3953 },
+  { name: "Durgapur", state: "West Bengal", lat: 23.5204, lng: 87.3119, aliases: ["asansol"] },
+  { name: "Cuttack", state: "Odisha", lat: 20.4625, lng: 85.8828 },
+  { name: "Rourkela", state: "Odisha", lat: 22.2604, lng: 84.8536 },
+  { name: "Kota", state: "Rajasthan", lat: 25.2138, lng: 75.8648 },
+  { name: "Udaipur", state: "Rajasthan", lat: 24.5854, lng: 73.7125 },
+  { name: "Muzaffarpur", state: "Bihar", lat: 26.1209, lng: 85.3647 },
+  { name: "Gaya", state: "Bihar", lat: 24.7955, lng: 85.0002 },
+  { name: "Jammu", state: "Jammu and Kashmir", lat: 32.7266, lng: 74.857 },
+  { name: "Shimla", state: "Himachal Pradesh", lat: 31.1048, lng: 77.1734 },
+  { name: "Panaji", state: "Goa", lat: 15.4909, lng: 73.8278, aliases: ["panjim", "goa"] },
+  { name: "Puducherry", state: "Puducherry", lat: 11.9416, lng: 79.8083, aliases: ["pondicherry"] },
+  { name: "Imphal", state: "Manipur", lat: 24.817, lng: 93.9368 },
+  { name: "Agartala", state: "Tripura", lat: 23.8315, lng: 91.2868 },
+  { name: "Aizawl", state: "Mizoram", lat: 23.7271, lng: 92.7176 },
+  { name: "Itanagar", state: "Arunachal Pradesh", lat: 27.0844, lng: 93.6053 },
+  { name: "Kohima", state: "Nagaland", lat: 25.6751, lng: 94.1086 },
+  { name: "Gangtok", state: "Sikkim", lat: 27.3389, lng: 88.6065 },
+  {
+    name: "Mumbai",
+    state: "Maharashtra",
+    lat: 19.076,
+    lng: 72.8777,
+    aliases: ["bombay", "mumbai suburban", "mumbai city", "navi mumbai"],
+  },
+  {
+    name: "Pune",
+    state: "Maharashtra",
+    lat: 18.5204,
+    lng: 73.8567,
+    aliases: ["poona", "pimpri", "chinchwad"],
+  },
   { name: "Nagpur", state: "Maharashtra", lat: 21.1458, lng: 79.0882 },
-  { name: "Delhi", state: "Delhi", lat: 28.6139, lng: 77.209, aliases: ["new delhi", "dwarka", "ncr"] },
-  { name: "Bengaluru", state: "Karnataka", lat: 12.9716, lng: 77.5946, aliases: ["bangalore", "bengaluru urban", "bengaluru rural", "bbmp"] },
+  {
+    name: "Delhi",
+    state: "Delhi",
+    lat: 28.6139,
+    lng: 77.209,
+    aliases: ["new delhi", "dwarka", "ncr"],
+  },
+  {
+    name: "Bengaluru",
+    state: "Karnataka",
+    lat: 12.9716,
+    lng: 77.5946,
+    aliases: ["bangalore", "bengaluru urban", "bengaluru rural", "bbmp"],
+  },
   { name: "Mysuru", state: "Karnataka", lat: 12.2958, lng: 76.6394, aliases: ["mysore"] },
   { name: "Chennai", state: "Tamil Nadu", lat: 13.0827, lng: 80.2707, aliases: ["madras"] },
-  { name: "Coimbatore", state: "Tamil Nadu", lat: 10.9925, lng: 76.9614, aliases: ["kovai", "ukkadam"] },
+  {
+    name: "Coimbatore",
+    state: "Tamil Nadu",
+    lat: 10.9925,
+    lng: 76.9614,
+    aliases: ["kovai", "ukkadam"],
+  },
   { name: "Madurai", state: "Tamil Nadu", lat: 9.9252, lng: 78.1198 },
   { name: "Sivakasi", state: "Tamil Nadu", lat: 9.4533, lng: 77.7987, aliases: ["virudhunagar"] },
   { name: "Kochi", state: "Kerala", lat: 9.9312, lng: 76.2673, aliases: ["cochin", "ernakulam"] },
-  { name: "Thiruvananthapuram", state: "Kerala", lat: 8.5241, lng: 76.9366, aliases: ["trivandrum", "vizhinjam"] },
-  { name: "Hyderabad", state: "Telangana", lat: 17.385, lng: 78.4867, aliases: ["secunderabad", "rangareddy"] },
-  { name: "Visakhapatnam", state: "Andhra Pradesh", lat: 17.6868, lng: 83.2185, aliases: ["vizag"] },
-  { name: "Ahmedabad", state: "Gujarat", lat: 23.0225, lng: 72.5714, aliases: ["amdavad", "gandhinagar"] },
+  {
+    name: "Thiruvananthapuram",
+    state: "Kerala",
+    lat: 8.5241,
+    lng: 76.9366,
+    aliases: ["trivandrum", "vizhinjam"],
+  },
+  {
+    name: "Hyderabad",
+    state: "Telangana",
+    lat: 17.385,
+    lng: 78.4867,
+    aliases: ["secunderabad", "rangareddy"],
+  },
+  {
+    name: "Visakhapatnam",
+    state: "Andhra Pradesh",
+    lat: 17.6868,
+    lng: 83.2185,
+    aliases: ["vizag"],
+  },
+  {
+    name: "Ahmedabad",
+    state: "Gujarat",
+    lat: 23.0225,
+    lng: 72.5714,
+    aliases: ["amdavad", "gandhinagar"],
+  },
   { name: "Surat", state: "Gujarat", lat: 21.1702, lng: 72.8311 },
   { name: "Jaipur", state: "Rajasthan", lat: 26.9124, lng: 75.7873 },
   { name: "Jodhpur", state: "Rajasthan", lat: 26.2389, lng: 73.0243, aliases: ["barmer"] },
   { name: "Lucknow", state: "Uttar Pradesh", lat: 26.8467, lng: 80.9462, aliases: ["sitapur"] },
-  { name: "Varanasi", state: "Uttar Pradesh", lat: 25.3176, lng: 82.9739, aliases: ["banaras", "kashi"] },
+  {
+    name: "Varanasi",
+    state: "Uttar Pradesh",
+    lat: 25.3176,
+    lng: 82.9739,
+    aliases: ["banaras", "kashi"],
+  },
   { name: "Kanpur", state: "Uttar Pradesh", lat: 26.4499, lng: 80.3319, aliases: ["kanpur nagar"] },
   { name: "Agra", state: "Uttar Pradesh", lat: 27.1767, lng: 78.0081 },
   { name: "Ghazipur", state: "Uttar Pradesh", lat: 25.5837, lng: 83.5776 },
   { name: "Patna", state: "Bihar", lat: 25.5941, lng: 85.1376, aliases: ["nalanda"] },
   { name: "Ranchi", state: "Jharkhand", lat: 23.3441, lng: 85.3096 },
-  { name: "Bhubaneswar", state: "Odisha", lat: 20.2961, lng: 85.8245, aliases: ["khordha", "khurda"] },
+  {
+    name: "Bhubaneswar",
+    state: "Odisha",
+    lat: 20.2961,
+    lng: 85.8245,
+    aliases: ["khordha", "khurda"],
+  },
   { name: "Indore", state: "Madhya Pradesh", lat: 22.7196, lng: 75.8577 },
   { name: "Bhopal", state: "Madhya Pradesh", lat: 23.2599, lng: 77.4126 },
   { name: "Ludhiana", state: "Punjab", lat: 30.901, lng: 75.8573 },
   { name: "Srinagar", state: "Jammu and Kashmir", lat: 34.0837, lng: 74.7973 },
   { name: "Guwahati", state: "Assam", lat: 26.1445, lng: 91.7362, aliases: ["nagaon", "kamrup"] },
-  { name: "Shillong", state: "Meghalaya", lat: 25.5788, lng: 91.8933, aliases: ["east khasi hills"] },
+  {
+    name: "Shillong",
+    state: "Meghalaya",
+    lat: 25.5788,
+    lng: 91.8933,
+    aliases: ["east khasi hills"],
+  },
 ];
 
 /** Lowercase, strip accents and punctuation so "Bengaluru Urban" matches "bengaluru". */
@@ -192,10 +338,7 @@ export function projectInCity(project: PlaceFields, city: CityOption): boolean {
   if (needles.some((needle) => haystack.includes(needle))) return true;
 
   if (project.latitude != null && project.longitude != null) {
-    return (
-      distanceKm(city.lat, city.lng, project.latitude, project.longitude) <=
-      CITY_RADIUS_KM
-    );
+    return distanceKm(city.lat, city.lng, project.latitude, project.longitude) <= CITY_RADIUS_KM;
   }
   return false;
 }
@@ -209,9 +352,7 @@ export function matchCityByText(text: string): CityOption | null {
       [city.name, ...(city.aliases ?? [])].some((label) => normalizeText(label) === query),
     ) ??
     INDIAN_CITIES.find((city) =>
-      [city.name, ...(city.aliases ?? [])].some((label) =>
-        normalizeText(label).startsWith(query),
-      ),
+      [city.name, ...(city.aliases ?? [])].some((label) => normalizeText(label).startsWith(query)),
     ) ??
     null
   );

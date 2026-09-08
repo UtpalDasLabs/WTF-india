@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, MapPin, Star } from "lucide-react";
+import { ArrowUpRight, Bookmark, MapPin, Star } from "lucide-react";
 
 import { StatusChip, VerificationChip } from "@/components/wtf/status-chip";
 import type { Project } from "@/lib/queries";
 import { formatBudget } from "@/lib/wtf";
+import { useFollow } from "@/hooks/use-follow";
+import { computeDelay } from "@/lib/delay";
 import { cn } from "@/lib/utils";
 
 /**
@@ -28,6 +30,9 @@ export function ProjectCard({
   rating?: { avg: number; count: number } | null;
 }) {
   const place = [project.district, project.state].filter(Boolean).join(", ") || "India";
+  const follow = useFollow();
+  const following = follow.isFollowing(project.id);
+  const delay = computeDelay(project);
 
   return (
     <Link
@@ -44,6 +49,9 @@ export function ProjectCard({
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip status={project.status} />
+            {delay && delay.days > 0 ? (
+              <span className="text-xs font-semibold text-status-delayed">{delay.label}</span>
+            ) : null}
             {distance != null ? (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="size-3.5" aria-hidden />
@@ -51,10 +59,31 @@ export function ProjectCard({
               </span>
             ) : null}
           </div>
-          <ArrowUpRight
-            className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-            aria-hidden
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              aria-pressed={following}
+              aria-label={following ? "Stop following this project" : "Follow this project"}
+              onClick={(event) => {
+                // The card is a link; following must not navigate.
+                event.preventDefault();
+                event.stopPropagation();
+                follow.toggle(project.id);
+              }}
+              className={cn(
+                "m3-state grid size-8 place-items-center rounded-full",
+                following
+                  ? "text-primary"
+                  : "text-muted-foreground hover:bg-surface-container-high hover:text-foreground",
+              )}
+            >
+              <Bookmark className={cn("size-4", following && "fill-current")} aria-hidden />
+            </button>
+            <ArrowUpRight
+              className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+              aria-hidden
+            />
+          </div>
         </div>
 
         <h3 className="display-sm mt-3 text-balance text-foreground">{project.name}</h3>

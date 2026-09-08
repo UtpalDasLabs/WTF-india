@@ -9,7 +9,10 @@ import { AppShell } from "@/components/wtf/app-shell";
 import { ApkDownloadCard } from "@/components/wtf/apk-download";
 import { MapCanvas } from "@/components/wtf/map-canvas";
 import { ProjectCard } from "@/components/wtf/project-card";
+import { Welcome } from "@/components/wtf/welcome";
+import { useFollow } from "@/hooks/use-follow";
 import { useLocation } from "@/hooks/use-location";
+import { useOnboarding } from "@/hooks/use-onboarding";
 import { projectsQuery, ratingsQuery, type Project } from "@/lib/queries";
 import {
   CITY_RADIUS_KM,
@@ -182,6 +185,8 @@ function Discover() {
   const projects = useQuery(projectsQuery());
   const ratings = useQuery(ratingsQuery());
   const location = useLocation();
+  const onboarding = useOnboarding();
+  const follow = useFollow();
 
   const [search, setSearch] = useState("");
   const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
@@ -322,6 +327,24 @@ function Discover() {
     </ul>
   );
 
+  if (onboarding.done === false && location.state.status === "idle") {
+    return (
+      <Welcome
+        onPickCity={(city) => {
+          pickCity(city);
+          onboarding.finish();
+        }}
+        onUseLocation={() => {
+          location.request();
+          onboarding.finish();
+        }}
+        onSkip={onboarding.finish}
+      />
+    );
+  }
+
+  const followed = filtered.filter((item) => follow.isFollowing(item.project.id));
+
   return (
     <AppShell width="wide">
       <h1 className="sr-only">Government projects near you</h1>
@@ -408,6 +431,28 @@ function Discover() {
           ))}
         </div>
       </div>
+
+      {followed.length > 0 ? (
+        <section className="mt-6 rounded-xl border border-border bg-surface p-5">
+          <p className="eyebrow text-muted-foreground">You are following {followed.length}</p>
+          <ul className="mt-3 divide-y divide-border">
+            {followed.map(({ project }) => (
+              <li key={project.id} className="py-2 first:pt-0 last:pb-0">
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: project.id }}
+                  className="flex items-center justify-between gap-4 text-sm hover:underline"
+                >
+                  <span className="truncate font-medium">{project.name}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {STATUS_LABEL[project.status]}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-8">
         <div className={cn(view === "map" && "hidden lg:block")}>{listNode}</div>

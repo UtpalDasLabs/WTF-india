@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Compass, PlusCircle, ScrollText, ShieldCheck, UserRound } from "lucide-react";
+import { Compass, PlusCircle, ScrollText, ShieldCheck, Skull, UserRound } from "lucide-react";
 
 import { WtfLogo } from "@/components/wtf/logo";
 import { ApkDownloadLink } from "@/components/wtf/apk-download";
@@ -26,6 +26,7 @@ export function AppShell({
 
   const items = [
     { to: "/", label: "Discover", icon: Compass },
+    { to: "/shame", label: "Hall of Shame", icon: Skull },
     { to: "/constitution", label: "Constitution", icon: ScrollText },
     { to: "/suggest", label: "Suggest", icon: PlusCircle },
     ...(session.isReviewer ? [{ to: "/admin", label: "Review", icon: ShieldCheck } as const] : []),
@@ -109,30 +110,32 @@ export function AppShell({
         className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur-xl md:hidden"
       >
         <ul className="flex items-stretch pb-[env(safe-area-inset-bottom)]">
-          {items.map((item) => {
-            const active = isActive(item.to);
-            const Icon = item.icon;
-            return (
-              <li key={item.to} className="flex-1">
-                <Link
-                  to={item.to}
-                  className="m3-state flex flex-col items-center gap-1 px-1 py-2 text-center text-[11px] font-medium leading-tight"
-                >
-                  <span
-                    className={cn(
-                      "grid h-7 w-full max-w-14 place-items-center rounded-full transition-colors",
-                      active ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-                    )}
+          {items
+            .filter((item) => item.to !== "/constitution")
+            .map((item) => {
+              const active = isActive(item.to);
+              const Icon = item.icon;
+              return (
+                <li key={item.to} className="flex-1">
+                  <Link
+                    to={item.to}
+                    className="m3-state flex flex-col items-center gap-1 px-1 py-2 text-center text-[11px] font-medium leading-tight"
                   >
-                    <Icon className="size-[18px]" aria-hidden />
-                  </span>
-                  <span className={active ? "text-foreground" : "text-muted-foreground"}>
-                    {item.label}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
+                    <span
+                      className={cn(
+                        "grid h-7 w-full max-w-14 place-items-center rounded-full transition-colors",
+                        active ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      <Icon className="size-[18px]" aria-hidden />
+                    </span>
+                    <span className={active ? "text-foreground" : "text-muted-foreground"}>
+                      {item.label}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
         </ul>
       </nav>
 
