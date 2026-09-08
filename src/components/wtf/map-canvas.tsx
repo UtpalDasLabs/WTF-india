@@ -300,23 +300,28 @@ export function MapCanvas({
         ) : null}
       </div>
 
+      {/* Tapping a pin is meant to feel like opening a door, not reading a
+          label: the whole card is the way in to that project's own page. */}
       {selected ? (
-        <div className="border-t border-border bg-surface-container-high p-3">
-          <p className="text-xs text-muted-foreground">
-            {[selected.district, selected.state].filter(Boolean).join(", ")} ·{" "}
-            {STATUS_LABEL[selected.status]}
-          </p>
-          <Link
-            to="/projects/$projectId"
-            params={{ projectId: selected.id }}
-            className="text-sm font-semibold text-primary underline underline-offset-4"
-          >
-            {selected.name}
-          </Link>
-        </div>
+        <Link
+          to="/projects/$projectId"
+          params={{ projectId: selected.id }}
+          className="m3-state flex items-center gap-3 border-t border-border bg-surface-container-high p-3 text-left"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs text-muted-foreground">
+              w/{[selected.district, selected.state].filter(Boolean).join(", ") || "India"} ·{" "}
+              {STATUS_LABEL[selected.status]}
+            </span>
+            <span className="mt-0.5 block truncate text-sm font-semibold">{selected.name}</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-foreground px-3 py-1.5 text-xs font-semibold text-background">
+            Go in
+          </span>
+        </Link>
       ) : (
         <p className="border-t border-border p-3 text-xs text-muted-foreground">
-          Tap a dot to see which project it is.
+          Tap a dot to go into that project.
         </p>
       )}
     </div>

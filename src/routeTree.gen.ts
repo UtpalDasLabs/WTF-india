@@ -13,8 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConstitutionRouteImport } from './routes/constitution'
-import { Route as ShameRouteImport } from './routes/shame'
 import { Route as SuggestRouteImport } from './routes/suggest'
+import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -37,14 +37,14 @@ const ConstitutionRoute = ConstitutionRouteImport.update({
   path: '/constitution',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShameRoute = ShameRouteImport.update({
-  id: '/shame',
-  path: '/shame',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SuggestRoute = SuggestRouteImport.update({
   id: '/suggest',
   path: '/suggest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrendingRoute = TrendingRouteImport.update({
+  id: '/trending',
+  path: '/trending',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -58,8 +58,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
-  '/shame': typeof ShameRoute
   '/suggest': typeof SuggestRoute
+  '/trending': typeof TrendingRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRoutesByTo {
@@ -67,8 +67,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
-  '/shame': typeof ShameRoute
   '/suggest': typeof SuggestRoute
+  '/trending': typeof TrendingRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRoutesById {
@@ -77,8 +77,8 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
-  '/shame': typeof ShameRoute
   '/suggest': typeof SuggestRoute
+  '/trending': typeof TrendingRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
 }
 export interface FileRouteTypes {
@@ -88,8 +88,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/constitution'
-    | '/shame'
     | '/suggest'
+    | '/trending'
     | '/projects/$projectId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -97,8 +97,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/constitution'
-    | '/shame'
     | '/suggest'
+    | '/trending'
     | '/projects/$projectId'
   id:
     | '__root__'
@@ -106,8 +106,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/constitution'
-    | '/shame'
     | '/suggest'
+    | '/trending'
     | '/projects/$projectId'
   fileRoutesById: FileRoutesById
 }
@@ -116,8 +116,8 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ConstitutionRoute: typeof ConstitutionRoute
-  ShameRoute: typeof ShameRoute
   SuggestRoute: typeof SuggestRoute
+  TrendingRoute: typeof TrendingRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
 }
 
@@ -151,18 +151,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConstitutionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/shame': {
-      id: '/shame'
-      path: '/shame'
-      fullPath: '/shame'
-      preLoaderRoute: typeof ShameRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/suggest': {
       id: '/suggest'
       path: '/suggest'
       fullPath: '/suggest'
       preLoaderRoute: typeof SuggestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trending': {
+      id: '/trending'
+      path: '/trending'
+      fullPath: '/trending'
+      preLoaderRoute: typeof TrendingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId': {
@@ -180,8 +180,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ConstitutionRoute: ConstitutionRoute,
-  ShameRoute: ShameRoute,
   SuggestRoute: SuggestRoute,
+  TrendingRoute: TrendingRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
 }
 export const routeTree = rootRouteImport

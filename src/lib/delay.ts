@@ -51,12 +51,3 @@ export function computeDelay(project: Project, now: Date = new Date()): Delay | 
   }
   return { days, running: !finished, label: `${phrase(days)} late` };
 }
-
-/** Ranking weight for the Hall of Shame: lateness scaled by money at stake. */
-export function shameScore(project: Project, now: Date = new Date()): number {
-  const delay = computeDelay(project, now);
-  if (!delay || delay.days <= 0) return 0;
-  // Crore, so a ₹6,000 crore metro outranks a ₹2 crore footpath at equal delay.
-  const crore = (project.budget_inr ?? 0) / 1e7;
-  return delay.days * Math.log10(Math.max(crore, 1) + 1);
-}

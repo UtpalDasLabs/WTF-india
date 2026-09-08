@@ -384,3 +384,26 @@ export const SUGGEST_CATEGORIES = [
   "Parks and public spaces",
   "Other",
 ];
+
+/**
+ * Where to start somebody who will not share their location. Big cities with the
+ * most tracked activity, so the first screen has something on it either way.
+ * Picked at random rather than always defaulting to Delhi, so the app does not
+ * quietly become a Delhi app.
+ */
+const METRO_FALLBACKS = [
+  "Mumbai",
+  "Delhi",
+  "Bengaluru",
+  "Chennai",
+  "Kolkata",
+  "Hyderabad",
+  "Pune",
+  "Ahmedabad",
+];
+
+export function randomMetro(): CityOption {
+  const pool = INDIAN_CITIES.filter((city) => METRO_FALLBACKS.includes(city.name));
+  const list = pool.length > 0 ? pool : INDIAN_CITIES;
+  return list[Math.floor(Math.random() * list.length)] as CityOption;
+}

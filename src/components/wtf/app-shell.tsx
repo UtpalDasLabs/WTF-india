@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Compass, PlusCircle, ScrollText, ShieldCheck, Skull, UserRound } from "lucide-react";
+import { Compass, PlusCircle, ScrollText, ShieldCheck, Flame, UserRound } from "lucide-react";
 
 import { WtfLogo } from "@/components/wtf/logo";
 import { ApkDownloadLink } from "@/components/wtf/apk-download";
@@ -26,7 +26,7 @@ export function AppShell({
 
   const items = [
     { to: "/", label: "Discover", icon: Compass },
-    { to: "/shame", label: "Hall of Shame", icon: Skull },
+    { to: "/trending", label: "Trending", icon: Flame },
     { to: "/constitution", label: "Constitution", icon: ScrollText },
     { to: "/suggest", label: "Suggest", icon: PlusCircle },
     ...(session.isReviewer ? [{ to: "/admin", label: "Review", icon: ShieldCheck } as const] : []),
