@@ -6,9 +6,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AppShell } from "@/components/wtf/app-shell";
 import { CommunitySection } from "@/components/wtf/community-section";
 import { EvidencePanel } from "@/components/wtf/evidence-panel";
+import { ShareButton } from "@/components/wtf/share-button";
 import { StatusChip, VerificationChip } from "@/components/wtf/status-chip";
 import { VerifiedTimeline } from "@/components/wtf/timeline";
 import { milestonesQuery, projectQuery, sourcesQuery } from "@/lib/queries";
+import { computeDelay } from "@/lib/delay";
 import { formatBudget, formatDate } from "@/lib/wtf";
 
 export const Route = createFileRoute("/projects/$projectId")({
@@ -69,6 +71,7 @@ function ProjectDetail() {
   }
 
   const data = project.data;
+  const delay = computeDelay(data);
 
   return (
     <AppShell width="wide">
@@ -87,6 +90,12 @@ function ProjectDetail() {
             <div className="flex flex-wrap items-center gap-3">
               <StatusChip status={data.status} />
               <VerificationChip status={data.verification_status} confidence={data.confidence} />
+              {delay && delay.days > 0 ? (
+                <span className="inline-flex items-center rounded-full bg-status-delayed-container px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-status-delayed">
+                  {delay.label}
+                </span>
+              ) : null}
+              <ShareButton project={data} sources={sources.data ?? undefined} className="ml-auto" />
             </div>
             <h1 className="display-lg mt-4 text-balance">{data.name}</h1>
             <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground">
