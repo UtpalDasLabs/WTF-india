@@ -530,6 +530,9 @@ class Stats:
     rows_kept: int = 0
     dropped_no_name: int = 0
     dropped_no_figures: int = 0
+    # header signature -> [kept, dropped]; and a couple of dropped rows verbatim.
+    per_shape: dict[str, list[int]] = field(default_factory=dict)
+    samples: dict[str, list[list[str]]] = field(default_factory=dict)
     headers: dict[str, int] = field(default_factory=dict)
     located_city: int = 0
     located_state: int = 0
@@ -563,6 +566,9 @@ def rows_from_table(
     header = [clean(cell) for cell in table[0]]
     stats.headers[header_signature(header)] = stats.headers.get(header_signature(header), 0) + 1
     mapping = classify(header)
+
+    signature = header_signature(header)
+    tally = stats.per_shape.setdefault(signature, [0, 0])
 
     if "name" in mapping.values():
         body = table[1:]
@@ -620,6 +626,10 @@ def rows_from_table(
         # inventing either is the one thing this must never do.
         if original_cost is None and original_date is None and revised_date is None:
             stats.dropped_no_figures += 1
+            tally[1] += 1
+            kept_samples = stats.samples.setdefault(signature, [])
+            if len(kept_samples) < 2:
+                kept_samples.append([clean(cell)[:38] for cell in raw])
             continue
 
         serial = values.get("serial", "") or str(stats.rows_kept + 1)
@@ -680,6 +690,7 @@ def rows_from_table(
             }
         )
         stats.rows_kept += 1
+        tally[0] += 1
     return out
 
 
@@ -732,10 +743,6 @@ def extract(pdf: bytes, inspect: bool) -> tuple[list[dict], Stats]:
                         table, sector, page_number, places, states, stats, seen_refs, carry, reuse
                     )
                 )
-
-            if inspect and page_number >= 60:
-                say("(--inspect stops after 60 pages)")
-                break
 
     say(f"kept {stats.rows_kept:,} rows from {stats.matched_tables:,} matching tables")
     return rows, stats
@@ -852,6 +859,22 @@ def write_report(stats: Stats, rows: list[dict], source_url: str) -> str:
         "",
         "Projects are placed only when their own name says where they are. Anything",
         "unplaced is left without coordinates rather than being put somewhere near.",
+        "",
+        "## Where rows are being lost",
+        "",
+        "Table shapes that produced dropped rows, worst first. A shape losing",
+        "most of its rows is a layout the parser does not understand yet.",
+        "",
+    ]
+    for signature, (kept, dropped) in sorted(
+        stats.per_shape.items(), key=lambda item: -item[1][1]
+    )[:10]:
+        if dropped == 0:
+            continue
+        lines.append(f"- **{dropped:,} dropped, {kept:,} kept** — `{signature}`")
+        for sample in stats.samples.get(signature, []):
+            lines.append(f"    - sample row: `{sample}`")
+    lines += [
         "",
         "## Table headers encountered",
         "",
