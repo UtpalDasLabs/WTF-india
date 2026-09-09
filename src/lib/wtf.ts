@@ -407,3 +407,21 @@ export function randomMetro(): CityOption {
   const list = pool.length > 0 ? pool : INDIAN_CITIES;
   return list[Math.floor(Math.random() * list.length)] as CityOption;
 }
+
+/**
+ * The city a pair of coordinates sits in, or null when nothing is close enough.
+ * Used to scope the map after the radar: once you have been located, the map
+ * should be about your city rather than about the whole country.
+ */
+export function nearestCity(lat: number, lng: number): CityOption | null {
+  let best: CityOption | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const city of INDIAN_CITIES) {
+    const distance = distanceKm(lat, lng, city.lat, city.lng);
+    if (distance < bestDistance) {
+      best = city;
+      bestDistance = distance;
+    }
+  }
+  return best && bestDistance <= CITY_RADIUS_KM ? best : null;
+}

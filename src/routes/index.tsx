@@ -23,6 +23,7 @@ import {
   distanceKm,
   formatBudget,
   matchCityByText,
+  nearestCity,
   normalizeText,
   projectInCity,
   randomMetro,
@@ -400,9 +401,21 @@ function Discover() {
         onDone={() => {
           // Declining location is not a dead end: it just means we start you in
           // a large city instead, which you can change from the bar at the top.
-          // Only the origin is set, not the city *filter* — the map should show
-          // the pins the radar just found, not silently drop most of them.
           if (declined) location.setManual(fallbackCity.lat, fallbackCity.lng, fallbackCity.name);
+
+          // Once you have been placed, the map is about your city rather than
+          // about the whole country — the same move rasthe.in makes by opening
+          // on one city's wards. But scoping to a city that has nothing in it
+          // would replace a map with an empty one, so the filter is only
+          // applied when there is actually something there to see.
+          const city = declined ? fallbackCity : origin ? nearestCity(origin.lat, origin.lng) : null;
+          if (city) {
+            const inCity = (projects.data ?? []).filter(
+              (project) => project.published && projectInCity(project, city),
+            );
+            if (inCity.length > 0) setCityName(city.name);
+          }
+
           setScanned(true);
           setView("map");
           onboarding.finish();

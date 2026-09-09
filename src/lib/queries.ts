@@ -124,16 +124,34 @@ const db = supabase as unknown as {
   from: (table: string) => any;
 };
 
+/**
+ * Every published project, in pages.
+ *
+ * PostgREST caps a response at 1,000 rows, and with the MoSPI import there are
+ * more projects than that. An unpaged select would come back truncated with no
+ * error at all — the map would quietly be missing a third of the country, which
+ * is a worse failure than not loading, because nothing on screen looks wrong.
+ */
+const PAGE_SIZE = 1000;
+
 export const projectsQuery = () =>
   queryOptions({
     queryKey: ["projects"],
     queryFn: async (): Promise<Project[]> => {
-      const { data, error } = await db
-        .from("projects")
-        .select("*")
-        .order("last_verified_at", { ascending: false, nullsFirst: false });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as Project[];
+      const all: Project[] = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await db
+          .from("projects")
+          .select("*")
+          .order("last_verified_at", { ascending: false, nullsFirst: false })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw new Error(error.message);
+        const page = (data ?? []) as Project[];
+        all.push(...page);
+        // A short page is the last page.
+        if (page.length < PAGE_SIZE) return all;
+      }
     },
   });
 
