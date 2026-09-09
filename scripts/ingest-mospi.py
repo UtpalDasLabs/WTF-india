@@ -534,25 +534,41 @@ def rows_from_table(
     states: dict[str, str],
     stats: Stats,
     seen_refs: set[str],
+    carry: dict[str, str] | None = None,
+    reuse: tuple[dict[int, str], int] | None = None,
 ) -> list[dict]:
     """
     One table to zero or more project rows. Split out of the PDF walk so the
     part that decides what counts as a project can be tested without a 500-page
     document, and so a change to the rules is reviewable on its own.
     """
-    if not table or len(table) < 2:
+    if not table:
         return []
 
+    carry = carry if carry is not None else {}
     header = [clean(cell) for cell in table[0]]
-    signature = header_signature(header)
-    stats.headers[signature] = stats.headers.get(signature, 0) + 1
+    stats.headers[header_signature(header)] = stats.headers.get(header_signature(header), 0) + 1
     mapping = classify(header)
-    if "name" not in mapping.values():
+
+    if "name" in mapping.values():
+        body = table[1:]
+    elif reuse is not None and len(header) == reuse[1]:
+        # A long table continues onto the next page without repeating its
+        # header, so this table's first row is data, not a header. Matching on
+        # the column count is what tells the two apart. Without this those
+        # continuation pages are dropped whole — 17 of the 56 tables in the
+        # August 2024 report.
+        mapping = reuse[0]
+        body = table
+    else:
+        return []
+
+    if not body:
         return []
     stats.matched_tables += 1
 
     out: list[dict] = []
-    for raw in table[1:]:
+    for raw in body:
         stats.rows_seen += 1
         values = {
             field_name: clean(raw[index]) if index < len(raw) else ""
@@ -598,12 +614,22 @@ def rows_from_table(
             continue
         seen_refs.add(ref)
 
-        # The report has its own state and sector columns; trust those over
-        # anything inferred, and only fall back to reading the project's name.
+        # State and sector are printed once and left blank down the rest of the
+        # block, so a blank cell means "same as above" rather than "unknown".
+        # Reading it as unknown left three quarters of the rows unplaced and put
+        # a Manipur road under "Railways" from a stale page-level guess.
+        for column in ("state_col", "sector_col"):
+            value = clean(values.get(column, ""))
+            if value:
+                carry[column] = value
+
         district, state, lat, lng = locate(raw_name, places, states)
-        column_state = states.get(clean(values.get("state_col", "")).lower())
+        column_state = states.get(carry.get("state_col", "").lower())
         if column_state:
             state = column_state
+            if lat is None:
+                # The state is known even when the exact place is not.
+                district = None
         if lat is not None:
             stats.located_city += 1
         elif state:
@@ -615,7 +641,7 @@ def rows_from_table(
             {
                 "external_ref": ref,
                 "name": name,
-                "sector": clean(values.get("sector_col", "")).title() or sector,
+                "sector": carry.get("sector_col", "").title() or sector,
                 "department": agency or values.get("agency") or None,
                 "state": state,
                 "district": district,
@@ -649,8 +675,12 @@ def extract(pdf: bytes, inspect: bool) -> tuple[list[dict], Stats]:
     stats = Stats()
     rows: list[dict] = []
     seen_refs: set[str] = set()
-    # Sector headings sit above the tables as running text, so the nearest
-    # heading above a row is that row's sector.
+    # A blank state or sector cell means "same as the row above", so the last
+    # seen value carries down the document.
+    carry: dict[str, str] = {}
+    # The header of the last real header row, reused for continuation pages.
+    reuse: tuple[dict[int, str], int] | None = None
+    # Only a last resort now that the report's own sector column is read.
     sector: str | None = None
 
     with pdfplumber.open(io.BytesIO(pdf)) as document:
@@ -664,8 +694,15 @@ def extract(pdf: bytes, inspect: bool) -> tuple[list[dict], Stats]:
 
             for table in page.extract_tables():
                 stats.tables += 1
+                if not table:
+                    continue
+                mapping = classify([clean(cell) for cell in table[0]])
+                if "name" in mapping.values():
+                    reuse = (mapping, len(table[0]))
                 rows.extend(
-                    rows_from_table(table, sector, page_number, places, states, stats, seen_refs)
+                    rows_from_table(
+                        table, sector, page_number, places, states, stats, seen_refs, carry, reuse
+                    )
                 )
 
             if inspect and page_number >= 60:

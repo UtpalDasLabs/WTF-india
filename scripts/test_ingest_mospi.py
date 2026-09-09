@@ -269,6 +269,73 @@ check("state column used", real["state"], "Chhattisgarh")
 check("acronyms kept", ingest.title_case("NH 111 SECTION (MoRTH)"), "NH 111 Section (MoRTH)")
 check("mixed case left alone", ingest.title_case("Jaipur Metro Rail"), "Jaipur Metro Rail")
 
+# ------------------------------------------------- merged cells and carry-over
+
+# The report prints state and sector once and leaves them blank down the rest of
+# the block. Reading a blank as "unknown" left 179 of 274 rows unplaced and put
+# a Manipur road under "Railways" from a stale page-level guess.
+carry_stats = ingest.Stats()
+carry: dict[str, str] = {}
+block = ingest.rows_from_table(
+    [
+        REAL_HEADER,
+        ["MANIPUR", "Road Transport & Highways", "100", "IMPHAL - KHONGSANG PKG-3 (NHIDCL) (N24000761)",
+         "05/2018", "03/2023 (03/2025)", "467.00", "300.00", "70"],
+        # Same block: the state and sector cells are blank because they are merged.
+        ["", "", "101", "TAMENGLONG - MAHUR PKG-1 (NHIDCL) (N24000762)",
+         "05/2018", "03/2023 (01/2025)", "185.80", "100.00", "60"],
+    ],
+    "Railways",  # the stale page guess that must not win
+    27,
+    places,
+    states,
+    carry_stats,
+    set(),
+    carry,
+)
+check("both rows kept", len(block), 2)
+check("state carried into the blank cell", block[1]["state"], "Manipur")
+check("sector carried into the blank cell", block[1]["sector"], "Road Transport & Highways")
+check("page guess never used when a column exists", block[0]["sector"], "Road Transport & Highways")
+
+# A long table continues onto the next page with no header row. Its first row is
+# data; treating it as a header threw the whole page away.
+cont_stats = ingest.Stats()
+continuation = ingest.rows_from_table(
+    [
+        ["", "", "102", "TAMENGLONG - MAHUR PKG-2 (NHIDCL) (N24000763)",
+         "05/2018", "03/2023 (02/2025)", "483.87", "200.00", "55"],
+    ],
+    None,
+    28,
+    places,
+    states,
+    cont_stats,
+    set(),
+    dict(carry),
+    (ingest.classify(REAL_HEADER), len(REAL_HEADER)),
+)
+check("continuation page is read as data", len(continuation), 1)
+check("continuation keeps the carried state", continuation[0]["state"], "Manipur")
+
+# Without a header to reuse, an unheaded table is still refused rather than
+# guessed at.
+check(
+    "no header and nothing to reuse means no rows",
+    ingest.rows_from_table(
+        [["", "", "9", "SOMETHING (X) (N1)", "1/2020", "1/2021", "10.00", "5", "5"]],
+        None,
+        1,
+        places,
+        states,
+        ingest.Stats(),
+        set(),
+        {},
+        None,
+    ),
+    [],
+)
+
 # ------------------------------------------------------------------ status
 
 check(
