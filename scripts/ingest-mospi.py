@@ -543,6 +543,59 @@ def slug(text: str) -> str:
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", text.lower())).strip("-")[:80]
 
 
+# A continuation row is recognised by what its cells contain, not by where they
+# sit. The report drops its blank leading columns on continuation pages, so an
+# eight-cell row continues a nine-column table — and applying the remembered
+# header by position shifted every field by one, which is how 613 rows with a
+# cost and two dates in them were recorded as having neither.
+#
+# The cells are self-describing once you look: the commissioning date and the
+# cost are the ones carrying the revision in brackets, "3/2026 (N.A.) {3/2026}"
+# and "1,248.93 (N.A.) {1,248.93}", while the approval date and the expenditure
+# are bare.
+BRACKETED_DATE = re.compile(r"^\d{1,2}[/-]\d{4}\s*[({]")
+BRACKETED_MONEY = re.compile(r"^[\d,]+(?:\.\d+)?\s*[({]")
+BARE_DATE = re.compile(r"^\d{1,2}[/-]\d{4}$")
+SERIAL = re.compile(r"^\d{1,4}$")
+
+
+def align_by_content(raw: list[object]) -> dict[str, str]:
+    """
+    Roles read off the cells themselves, for a row with no header above it.
+    Returns an empty mapping when the row does not look like a project, so an
+    unrecognisable row is still dropped rather than forced into a shape.
+    """
+    cells = [clean(cell) for cell in raw]
+
+    # The name is the cell that is mostly words. Everything else in these tables
+    # is a number, a date or a percentage.
+    name_index, most_letters = -1, 0
+    for index, cell in enumerate(cells):
+        letters = sum(character.isalpha() for character in cell)
+        if letters > most_letters:
+            name_index, most_letters = index, letters
+    if name_index < 0 or most_letters < 6:
+        return {}
+
+    values: dict[str, str] = {"name": cells[name_index]}
+    for index, cell in enumerate(cells):
+        if index == name_index or not cell:
+            continue
+        if BRACKETED_DATE.match(cell):
+            values.setdefault("date_combined", cell)
+        elif BRACKETED_MONEY.match(cell):
+            values.setdefault("cost_combined", cell)
+        elif SERIAL.match(cell):
+            values.setdefault("serial", cell)
+
+    # Without a bracketed cost or date there is nothing here worth keeping, and
+    # guessing which bare number is the sanctioned cost is exactly the kind of
+    # invention this pipeline refuses to do.
+    if "date_combined" not in values and "cost_combined" not in values:
+        return {}
+    return values
+
+
 def rows_from_table(
     table: list[list[object]],
     sector: str | None,
@@ -570,17 +623,11 @@ def rows_from_table(
     signature = header_signature(header)
     tally = stats.per_shape.setdefault(signature, [0, 0])
 
-    if "name" in mapping.values():
-        body = table[1:]
-    elif reuse is not None and len(header) == reuse[1]:
-        # A long table continues onto the next page without repeating its
-        # header, so this table's first row is data, not a header. Matching on
-        # the column count is what tells the two apart. Without this those
-        # continuation pages are dropped whole — 17 of the 56 tables in the
-        # August 2024 report.
-        mapping = reuse[0]
-        body = table
-    else:
+    headed = "name" in mapping.values()
+    body = table[1:] if headed else table
+    if not headed and reuse is None:
+        # Nothing above this table has ever looked like a project table, so it
+        # is some other furniture in the document.
         return []
 
     if not body:
@@ -590,10 +637,17 @@ def rows_from_table(
     out: list[dict] = []
     for raw in body:
         stats.rows_seen += 1
-        values = {
-            field_name: clean(raw[index]) if index < len(raw) else ""
-            for index, field_name in mapping.items()
-        }
+        values = (
+            {
+                field_name: clean(raw[index]) if index < len(raw) else ""
+                for index, field_name in mapping.items()
+            }
+            if headed
+            else align_by_content(raw)
+        )
+        if not values:
+            stats.dropped_no_name += 1
+            continue
 
         raw_name = values.get("name", "")
         # Continuation and subtotal lines carry no usable project name.

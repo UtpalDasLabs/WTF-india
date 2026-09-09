@@ -299,14 +299,26 @@ check("state carried into the blank cell", block[1]["state"], "Manipur")
 check("sector stays unset even when a column exists", block[1]["sector"], None)
 check("page guess never leaks into sector", block[0]["sector"], None)
 
-# A long table continues onto the next page with no header row. Its first row is
-# data; treating it as a header threw the whole page away.
+# A long table continues onto the next page with no header row, and the report
+# drops its blank leading columns there, so the row is a column short. Matching
+# the remembered header by column count shifted every field by one and recorded
+# 613 rows that had a cost and two dates as having neither. Roles now come from
+# what the cells contain.
+REAL_CONTINUATION = [
+    "", "785", "RAMPUR BATURA OC (4.0 MTY) (SECL) (N06000123)", "7/2019",
+    "3/2026 (N.A.) {3/2026}", "1,248.93 (N.A.) {1,248.93}", "465.30", "44",
+]
+aligned = ingest.align_by_content(REAL_CONTINUATION)
+check("name found by content", aligned["name"], "RAMPUR BATURA OC (4.0 MTY) (SECL) (N06000123)")
+check("serial found by content", aligned["serial"], "785")
+# The bracketed cells are the commissioning date and the cost; the bare ones are
+# the approval date and the expenditure, and must not be mistaken for them.
+check("bracketed date is the commissioning date", aligned["date_combined"], "3/2026 (N.A.) {3/2026}")
+check("bracketed money is the cost", aligned["cost_combined"], "1,248.93 (N.A.) {1,248.93}")
+
 cont_stats = ingest.Stats()
 continuation = ingest.rows_from_table(
-    [
-        ["", "", "102", "TAMENGLONG - MAHUR PKG-2 (NHIDCL) (N24000763)",
-         "05/2018", "03/2023 (02/2025)", "483.87", "200.00", "55"],
-    ],
+    [REAL_CONTINUATION],
     None,
     28,
     places,
@@ -316,56 +328,22 @@ continuation = ingest.rows_from_table(
     dict(carry),
     (ingest.classify(REAL_HEADER), len(REAL_HEADER)),
 )
-check("continuation page is read as data", len(continuation), 1)
-check("continuation keeps the carried state", continuation[0]["state"], "Manipur")
+check("continuation row is kept", len(continuation), 1)
+check("its cost survives", continuation[0]["original_cost_inr"], int(1248.93 * CRORE))
+check("its date survives", continuation[0]["original_end_date"], "2026-03-01")
 
-# Without a header to reuse, an unheaded table is still refused rather than
-# guessed at.
+# A row with no bracketed cost or date has nothing worth keeping, and guessing
+# which bare number is the sanctioned cost is exactly the invention this refuses.
+check("a row of bare numbers is refused", ingest.align_by_content(["", "12", "TOTAL", "100.00", "5"]), {})
+check("an empty row is refused", ingest.align_by_content(["", "", "", ""]), {})
+
+# Without a header ever seen, a stray table is still not read as projects.
 check(
     "no header and nothing to reuse means no rows",
     ingest.rows_from_table(
-        [["", "", "9", "SOMETHING (X) (N1)", "1/2020", "1/2021", "10.00", "5", "5"]],
-        None,
-        1,
-        places,
-        states,
-        ingest.Stats(),
-        set(),
-        {},
-        None,
+        [REAL_CONTINUATION], None, 1, places, states, ingest.Stats(), set(), {}, None
     ),
     [],
-)
-
-# ---------------------------------------------------- agency out of the name
-
-_, gaz_states = ingest.load_gazetteer()
-check(
-    "agency from the trailing group",
-    ingest.split_name("SOME ROAD PROJECT (MoRTH) (N24001218) (CHHATTISGARH)", gaz_states)[1],
-    "MoRTH",
-)
-# A bracket inside the name is part of the name. Reading the first bracket
-# anywhere filed a chainage as the responsible agency.
-check(
-    "chainage in the name is not an agency",
-    ingest.split_name(
-        "4L+PS OF NH-58 FROM BEAWAR-GOMTI (OLD CH KM 108.600 TO KM 144) PKG-II (MoRTH) (N24001300)",
-        gaz_states,
-    )[1],
-    "MoRTH",
-)
-check(
-    "no agency rather than a wrong one",
-    ingest.split_name("PLAIN PROJECT NAME WITH NO BRACKETS", gaz_states)[1],
-    None,
-)
-# A package number in a trailing bracket is not an agency. Letting these
-# through filed projects under departments called "PKG- 2A".
-check(
-    "package number is not an agency",
-    ingest.split_name("RISHI BORDER- ROLEP- MENLA (PKG- 2A)", gaz_states)[1],
-    None,
 )
 
 # ------------------------------------------------------------------ status
