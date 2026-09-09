@@ -157,7 +157,8 @@ check("revised cost", first["revised_cost_inr"], 1450 * CRORE)
 check("original date", first["original_end_date"], "2019-03-01")
 check("revised date", first["revised_end_date"], "2026-06-01")
 check("time overrun", first["time_overrun_months"], 87)
-check("sector carried down", first["sector"], "Railways")
+# Sector is deliberately never published; see the note in ingest-mospi.py.
+check("sector is not guessed", first["sector"], None)
 check("page recorded", first["source_page"], 42)
 check("located to Jaipur", first["district"], "Jaipur")
 check("state from city", first["state"], "Rajasthan")
@@ -262,7 +263,7 @@ check("original cost from the combined cell", real["original_cost_inr"], int(335
 check("revised cost from the combined cell", real["revised_cost_inr"], int(480 * CRORE))
 check("original date from the combined cell", real["original_end_date"], "2021-03-01")
 check("revised date from the combined cell", real["revised_end_date"], "2027-09-01")
-check("sector column beats the page guess", real["sector"], "Road Transport & Highways")
+check("sector column is not published either", real["sector"], None)
 check("state column used", real["state"], "Chhattisgarh")
 
 # Title casing must not flatten the acronyms and chainages that carry meaning.
@@ -295,8 +296,8 @@ block = ingest.rows_from_table(
 )
 check("both rows kept", len(block), 2)
 check("state carried into the blank cell", block[1]["state"], "Manipur")
-check("sector carried into the blank cell", block[1]["sector"], "Road Transport & Highways")
-check("page guess never used when a column exists", block[0]["sector"], "Road Transport & Highways")
+check("sector stays unset even when a column exists", block[1]["sector"], None)
+check("page guess never leaks into sector", block[0]["sector"], None)
 
 # A long table continues onto the next page with no header row. Its first row is
 # data; treating it as a header threw the whole page away.
@@ -357,6 +358,13 @@ check(
 check(
     "no agency rather than a wrong one",
     ingest.split_name("PLAIN PROJECT NAME WITH NO BRACKETS", gaz_states)[1],
+    None,
+)
+# A package number in a trailing bracket is not an agency. Letting these
+# through filed projects under departments called "PKG- 2A".
+check(
+    "package number is not an agency",
+    ingest.split_name("RISHI BORDER- ROLEP- MENLA (PKG- 2A)", gaz_states)[1],
     None,
 )
 

@@ -384,6 +384,10 @@ def split_combined(value: str) -> tuple[str, str]:
 
 PROJECT_CODE = re.compile(r"^[A-Z]{1,3}\d{5,}$")
 
+# Organisation acronyms only: two to ten letters, no digits. "MoRTH" and
+# "NHIDCL" pass; "PKG- 2A" and "old Ch KM 108.600 to KM 144" do not.
+AGENCY_SHAPE = re.compile(r"^[A-Za-z][A-Za-z.&/ -]{1,9}$")
+
 # Tokens that are acronyms or measurements, not words, and must not be title-cased.
 KEEP_AS_IS = {
     "NH", "SH", "KM", "PKG", "MW", "KV", "LNG", "CGD", "STPP", "TPS", "HEP", "RCC",
@@ -447,8 +451,10 @@ def split_name(raw: str, states: dict[str, str]) -> tuple[str, str | None]:
     for candidate in reversed(trailing):
         if not candidate or PROJECT_CODE.match(candidate) or candidate.lower() in states:
             continue
-        # An agency is a short name, not a chainage or a description.
-        if len(candidate) > 24 or re.search(r"\d{3}", candidate):
+        # An agency is an organisation's short name — NHIDCL, MoRTH, ONGC.
+        # Anything else in a trailing bracket is package or chainage metadata,
+        # and letting it through produced departments like "PKG- 2A".
+        if not AGENCY_SHAPE.match(candidate):
             continue
         agency = candidate
         break
@@ -649,7 +655,16 @@ def rows_from_table(
             {
                 "external_ref": ref,
                 "name": name,
-                "sector": carry.get("sector_col", "").title() or sector,
+                # Deliberately not set. The report has a sector column, but it
+                # is printed once per block and blank thereafter, and its tables
+                # run across pages, so a row's sector cannot be tied to it
+                # reliably: two runs put NHIDCL highways under "Railways" and
+                # ONGC refineries under "Health And". A field that is wrong is
+                # worse than a field that is missing on a page asking to be
+                # believed, so it stays empty until there is a way to get it
+                # right — the agency and the project's own name carry the
+                # meaning in the meantime.
+                "sector": None,
                 "department": agency or values.get("agency") or None,
                 "state": state,
                 "district": district,
