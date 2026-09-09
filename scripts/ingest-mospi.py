@@ -427,25 +427,33 @@ def split_name(raw: str, states: dict[str, str]) -> tuple[str, str | None]:
     The trailing brackets are metadata the report appends to every row; leaving
     them in a headline makes every project look like a filing reference rather
     than a road somebody drives on.
+
+    Only the trailing groups count. Project names contain brackets of their own
+    ("(old Ch KM 108.600 to KM 144)", "(PKG-II)"), and reading the first bracket
+    anywhere in the string filed those as the responsible agency — the field
+    came out as "OLD CH KM 108.600 TO KM 144 KM 158.419 TO KM 173.300 PKG-II".
     """
+    name = clean(raw)
+    trailing: list[str] = []
+    while True:
+        match = re.search(r"\s*\(([^()]*)\)\s*$", name)
+        if not match:
+            break
+        trailing.append(clean(match.group(1)))
+        name = name[: match.start()].strip()
+
     agency: str | None = None
-    for group in re.findall(r"\(([^)]*)\)", raw):
-        candidate = clean(group)
+    # Innermost trailing group first: the report writes (AGENCY) (CODE) (STATE).
+    for candidate in reversed(trailing):
         if not candidate or PROJECT_CODE.match(candidate) or candidate.lower() in states:
             continue
-        if agency is None:
-            agency = candidate
+        # An agency is a short name, not a chainage or a description.
+        if len(candidate) > 24 or re.search(r"\d{3}", candidate):
+            continue
+        agency = candidate
+        break
 
-    name = raw
-    # Strip trailing bracket groups one at a time; a bracket in the middle of a
-    # name ("Package IV") is part of the name and stays.
-    while True:
-        stripped = re.sub(r"\s*\([^()]*\)\s*$", "", name).strip()
-        if stripped == name:
-            break
-        name = stripped
-
-    return title_case(clean(name)), agency
+    return title_case(name), agency
 
 
 def parse_int(value: str) -> int | None:
@@ -699,6 +707,11 @@ def extract(pdf: bytes, inspect: bool) -> tuple[list[dict], Stats]:
                 mapping = classify([clean(cell) for cell in table[0]])
                 if "name" in mapping.values():
                     reuse = (mapping, len(table[0]))
+                    # A new header starts a new section, so the carried state and
+                    # sector stop here. Letting them run on filed ONGC refineries
+                    # under "Health And" and NHIDCL roads under "Railways",
+                    # because the last value seen simply never expired.
+                    carry.clear()
                 rows.extend(
                     rows_from_table(
                         table, sector, page_number, places, states, stats, seen_refs, carry, reuse

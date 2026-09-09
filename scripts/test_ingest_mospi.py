@@ -336,6 +336,30 @@ check(
     [],
 )
 
+# ---------------------------------------------------- agency out of the name
+
+_, gaz_states = ingest.load_gazetteer()
+check(
+    "agency from the trailing group",
+    ingest.split_name("SOME ROAD PROJECT (MoRTH) (N24001218) (CHHATTISGARH)", gaz_states)[1],
+    "MoRTH",
+)
+# A bracket inside the name is part of the name. Reading the first bracket
+# anywhere filed a chainage as the responsible agency.
+check(
+    "chainage in the name is not an agency",
+    ingest.split_name(
+        "4L+PS OF NH-58 FROM BEAWAR-GOMTI (OLD CH KM 108.600 TO KM 144) PKG-II (MoRTH) (N24001300)",
+        gaz_states,
+    )[1],
+    "MoRTH",
+)
+check(
+    "no agency rather than a wrong one",
+    ingest.split_name("PLAIN PROJECT NAME WITH NO BRACKETS", gaz_states)[1],
+    None,
+)
+
 # ------------------------------------------------------------------ status
 
 check(
