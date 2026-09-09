@@ -623,7 +623,24 @@ def rows_from_table(
     signature = header_signature(header)
     tally = stats.per_shape.setdefault(signature, [0, 0])
 
-    headed = "name" in mapping.values()
+    # A real header names more than one thing. A data row can classify as a
+    # header purely because a project's name contains the word "project" —
+    # "CGD PROJECT AT JAMMU DISTRICTS" did exactly that — and the table then
+    # gets read with a name column and nothing else, so every row under it is
+    # dropped for having no cost and no date. Requiring a figure column as well
+    # tells a header from a row that merely reads like one.
+    fields = set(mapping.values())
+    headed = "name" in fields and bool(
+        fields
+        & {
+            "cost_combined",
+            "date_combined",
+            "original_cost",
+            "revised_cost",
+            "original_date",
+            "revised_date",
+        }
+    )
     body = table[1:] if headed else table
     if not headed and reuse is None:
         # Nothing above this table has ever looked like a project table, so it

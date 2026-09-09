@@ -1,12 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
-import type {
-  ModerationState,
-  ProjectStatus,
-  SourceType,
-  VerifyStatus,
-} from "@/lib/wtf";
+import type { ModerationState, ProjectStatus, SourceType, VerifyStatus } from "@/lib/wtf";
 
 export type Project = {
   id: string;
@@ -31,7 +26,6 @@ export type Project = {
   source_origin?: "official" | "community";
   community_note?: string | null;
 };
-
 
 export type ProjectSource = {
   id: string;
@@ -81,7 +75,12 @@ export type ReviewImage = {
   moderation_state: ModerationState;
 };
 
-export type CandidatePhoto = { url: string; caption: string | null; moderation_state: ModerationState; moderation_label: string | null };
+export type CandidatePhoto = {
+  url: string;
+  caption: string | null;
+  moderation_state: ModerationState;
+  moderation_label: string | null;
+};
 
 export type CandidateProject = {
   id: string;
@@ -122,6 +121,10 @@ export type CandidateProject = {
 
 const db = supabase as unknown as {
   from: (table: string) => any;
+  rpc: (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
 /**
@@ -257,10 +260,7 @@ export const myReviewImagesQuery = (reviewId: string | null) =>
     enabled: Boolean(reviewId),
     queryFn: async (): Promise<ReviewImage[]> => {
       if (!reviewId) return [];
-      const { data, error } = await db
-        .from("review_images")
-        .select("*")
-        .eq("review_id", reviewId);
+      const { data, error } = await db.from("review_images").select("*").eq("review_id", reviewId);
       if (error) throw new Error(error.message);
       return (data ?? []) as ReviewImage[];
     },
@@ -311,10 +311,7 @@ export const moderationQueueQuery = () =>
   });
 
 export async function averageRating(projectId: string) {
-  const { data } = await db
-    .from("reviews_public")
-    .select("rating")
-    .eq("project_id", projectId);
+  const { data } = await db.from("reviews_public").select("rating").eq("project_id", projectId);
   const rows = (data ?? []) as Array<{ rating: number }>;
   if (rows.length === 0) return null;
   return rows.reduce((sum, row) => sum + row.rating, 0) / rows.length;
@@ -349,3 +346,45 @@ export const ratingsQuery = () =>
   });
 
 export { db as wtfDb };
+
+/** The four ways a reader can react. Stored as names so the glyphs can change. */
+export const REACTIONS = ["facepalm", "doubt", "outrage", "again"] as const;
+export type Reaction = (typeof REACTIONS)[number];
+
+export type ReactionCounts = Record<string, Partial<Record<Reaction, number>>>;
+
+/**
+ * Reaction totals for every project, read from a view that never exposes who
+ * reacted. One query for the whole page rather than one per row.
+ */
+export const reactionsQuery = () =>
+  queryOptions({
+    queryKey: ["reactions"],
+    queryFn: async (): Promise<ReactionCounts> => {
+      const { data, error } = await db
+        .from("project_reaction_counts")
+        .select("project_id, reaction, total");
+      if (error) throw new Error(error.message);
+      const counts: ReactionCounts = {};
+      for (const row of (data ?? []) as Array<{
+        project_id: string;
+        reaction: Reaction;
+        total: number;
+      }>) {
+        counts[row.project_id] ??= {};
+        counts[row.project_id]![row.reaction] = row.total;
+      }
+      return counts;
+    },
+  });
+
+/** Toggles one reaction and reports whether it is now on. */
+export async function toggleReaction(projectId: string, reaction: Reaction, voter: string) {
+  const { data, error } = await db.rpc("toggle_reaction", {
+    _project: projectId,
+    _reaction: reaction,
+    _voter: voter,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}

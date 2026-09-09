@@ -346,6 +346,30 @@ check(
     [],
 )
 
+# A data row whose project name contains the word "project" must not be mistaken
+# for a header. It was: the table then had a name column and no figure columns,
+# and every row under it was dropped as having no cost and no date.
+fake_header_stats = ingest.Stats()
+fake_header = ingest.rows_from_table(
+    [
+        ["", "545", "CGD PROJECT AT JAMMU DISTRICTS (IOCL) (N09000123)", "3/2022",
+         "3/2032 (Sep-34) {9/2034}", "538.00 (N.A.) {538.00}", "4.21", "0.2"],
+        ["POWER", "546", "PAKAL DUL HYDRO ELECTRIC PROJECT (CVPPPL) (N18000456)", "10/2014",
+         "4/2020 (Jul-25) {9/2026}", "8,112.12 (N.A.) {8,112.12}", "4,790.15", "56.88"],
+    ],
+    None,
+    100,
+    places,
+    states,
+    fake_header_stats,
+    set(),
+    {},
+    (ingest.classify(REAL_HEADER), len(REAL_HEADER)),
+)
+check("both rows read as data", len(fake_header), 2)
+check("the first row is a project, not a header", fake_header[0]["original_cost_inr"], int(538 * CRORE))
+check("the second row keeps its cost", fake_header[1]["original_cost_inr"], int(8112.12 * CRORE))
+
 # ------------------------------------------------------------------ status
 
 check(

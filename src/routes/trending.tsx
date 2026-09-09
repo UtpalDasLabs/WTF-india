@@ -5,12 +5,19 @@ import { Flame, MessageSquare, Users } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppShell } from "@/components/wtf/app-shell";
+import { Reactions } from "@/components/wtf/reactions";
 import { ShareButton } from "@/components/wtf/share-button";
 import { StatusChip } from "@/components/wtf/status-chip";
 import { useFollow } from "@/hooks/use-follow";
 import { computeDelay } from "@/lib/delay";
 import { rankByHeat, type Heat } from "@/lib/hot";
-import { projectsQuery, ratingsQuery, type Project } from "@/lib/queries";
+import {
+  projectsQuery,
+  ratingsQuery,
+  reactionsQuery,
+  type Project,
+  type ReactionCounts,
+} from "@/lib/queries";
 import { formatBudget, formatDate } from "@/lib/wtf";
 
 export const Route = createFileRoute("/trending")({
@@ -37,11 +44,13 @@ function Row({
   heat,
   rank,
   talk,
+  reactions,
 }: {
   project: Project;
   heat: Heat;
   rank: number;
   talk: number;
+  reactions: ReactionCounts | undefined;
 }) {
   const follow = useFollow();
   const following = follow.isFollowing(project.id);
@@ -96,7 +105,9 @@ function Row({
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Reactions projectId={project.id} counts={reactions} className="mt-4" />
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => follow.toggle(project.id)}
@@ -124,6 +135,7 @@ function Row({
 function Trending() {
   const projects = useQuery(projectsQuery());
   const ratings = useQuery(ratingsQuery());
+  const reactions = useQuery(reactionsQuery());
 
   const ranked = useMemo(
     () =>
@@ -179,6 +191,7 @@ function Trending() {
               heat={heat}
               rank={index + 1}
               talk={ratings.data?.[project.id]?.count ?? 0}
+              reactions={reactions.data}
             />
           ))}
         </ul>
