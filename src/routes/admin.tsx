@@ -14,7 +14,17 @@ import { useSession } from "@/hooks/use-session";
 import { runResearchAgent } from "@/lib/agent.functions";
 import { IS_STATIC_DEPLOY } from "@/lib/base-path";
 import { MODERATION_STATE_LABEL } from "@/lib/moderation";
-import { candidatesQuery, moderationQueueQuery, projectsQuery, wtfDb } from "@/lib/queries";
+import {
+  candidatesQuery,
+  clearPostFlags,
+  flaggedPostsQuery,
+  moderationQueueQuery,
+  photoUrl,
+  projectsQuery,
+  removePost,
+  setPostState,
+  wtfDb,
+} from "@/lib/queries";
 import { SOURCE_TYPE_LABEL, confidencePercent, formatDate } from "@/lib/wtf";
 
 export const Route = createFileRoute("/admin")({
@@ -42,12 +52,23 @@ function AdminPage() {
   const queryClient = useQueryClient();
   const candidates = useQuery(candidatesQuery());
   const flagged = useQuery(moderationQueueQuery());
+  const flaggedPosts = useQuery(flaggedPostsQuery(session.isReviewer));
   const projects = useQuery(projectsQuery());
   const [focus, setFocus] = useState("Metro rail projects in Tamil Nadu");
   const agent = useServerFn(runResearchAgent);
 
   const invalidate = (keys: string[]) =>
     keys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key] }));
+
+  // Posts are live the moment they are written and hide themselves once four
+  // separate devices object. This is the part a person has to do: a post flagged
+  // once by somebody it merely annoyed, and one hidden by four friends acting
+  // together, both look identical to a counter.
+  const judgePost = useMutation({
+    mutationFn: async (job: () => Promise<unknown>) => job(),
+    onSuccess: () => invalidate(["flagged-posts", "posts", "post-counts"]),
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const runAgent = useMutation({
     mutationFn: () => agent({ data: { focus } }),
@@ -616,6 +637,81 @@ function AdminPage() {
         </TabsContent>
 
         <TabsContent value="moderation" className="mt-4 space-y-3">
+          <section className="rounded-xl border border-border bg-surface p-4">
+            <h2 className="text-sm font-semibold">Flagged posts and photos</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Written without an account, so the only identity is the browser id beside each one.
+              Four flags hides a post automatically; clearing them puts it back and stops the next
+              objection hiding it again.
+            </p>
+
+            {(flaggedPosts.data ?? []).length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Nothing has been flagged and nothing is hidden.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {(flaggedPosts.data ?? []).map((post) => (
+                  <li key={post.id} className="rounded-lg border border-border p-3">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-tertiary-container px-2 py-0.5 text-tertiary-container-foreground">
+                        <ShieldAlert className="size-3" aria-hidden />
+                        {post.flag_count} {post.flag_count === 1 ? "flag" : "flags"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {post.state === "hidden" ? "Hidden" : "Live"} ·{" "}
+                        {formatDate(post.created_at)}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {post.device_id.slice(0, 8)}…
+                      </span>
+                    </div>
+
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {post.project?.name ?? "Unknown project"}
+                    </p>
+                    {post.photo_path ? (
+                      <img
+                        src={photoUrl(post.photo_path)}
+                        alt="Flagged photo"
+                        className="mt-2 max-h-48 rounded-lg object-cover"
+                      />
+                    ) : null}
+                    {post.body ? <p className="mt-2 text-sm">{post.body}</p> : null}
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => judgePost.mutate(() => clearPostFlags(post.id))}
+                      >
+                        It is fine — clear the flags
+                      </Button>
+                      {post.state === "hidden" ? null : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full"
+                          onClick={() => judgePost.mutate(() => setPostState(post.id, "hidden"))}
+                        >
+                          Take it down
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full text-destructive"
+                        onClick={() => judgePost.mutate(() => removePost(post.id))}
+                      >
+                        Delete for good
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
           {(flagged.data ?? []).length === 0 ? (
             <p className="rounded-xl border border-border bg-surface p-4 text-sm text-muted-foreground">
               Nothing is waiting. Flagged reviews and photos appear here.

@@ -645,3 +645,60 @@ export async function uploadPhoto(projectHint: string, file: Blob): Promise<stri
   if (error) throw new Error(error.message);
   return path;
 }
+
+/* -------------------------------------------------------------------------
+ * The reviewer's view of the community layer
+ *
+ * These read the tables themselves rather than the public views, which is only
+ * possible for an account holding a reviewer role — the policies behind them are
+ * false for everybody else, so an ordinary signed-in reader gets an empty result
+ * rather than somebody's device id.
+ * ---------------------------------------------------------------------- */
+
+export type FlaggedPost = Post & {
+  device_id: string;
+  state: "visible" | "hidden";
+  project?: { name: string } | null;
+};
+
+/** Everything a reader has objected to, plus everything already taken down. */
+export const flaggedPostsQuery = (enabled: boolean) =>
+  queryOptions({
+    queryKey: ["flagged-posts"],
+    enabled,
+    queryFn: async (): Promise<FlaggedPost[]> => {
+      const { data, error } = await db
+        .from("project_posts")
+        .select("*, project:projects(name)")
+        .or("flag_count.gt.0,state.eq.hidden")
+        .order("flag_count", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as FlaggedPost[];
+    },
+  });
+
+/** Takes a post down, or puts it back. */
+export async function setPostState(postId: string, state: "visible" | "hidden") {
+  const { error } = await db.from("project_posts").update({ state }).eq("id", postId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Clearing the flags is how a reviewer says "this one is fine". Without it the
+ * count would immediately hide the post again the next time anybody objected.
+ */
+export async function clearPostFlags(postId: string) {
+  const { error: flagError } = await db.from("post_flags").delete().eq("post_id", postId);
+  if (flagError) throw new Error(flagError.message);
+  const { error } = await db
+    .from("project_posts")
+    .update({ flag_count: 0, state: "visible" })
+    .eq("id", postId);
+  if (error) throw new Error(error.message);
+}
+
+export async function removePost(postId: string) {
+  const { error } = await db.from("project_posts").delete().eq("id", postId);
+  if (error) throw new Error(error.message);
+}
