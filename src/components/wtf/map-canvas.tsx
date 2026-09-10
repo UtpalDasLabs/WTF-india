@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import type { LatLngTuple, LayerGroup, Map as LeafletMap, Marker } from "leaflet";
+import type { LatLngTuple, LayerGroup, Map as LeafletMap, Marker, TileLayer } from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 
@@ -20,6 +20,30 @@ const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 /** Required by the ODbL licence for OpenStreetMap tiles. Do not drop this. */
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+/**
+ * Aerial imagery, for when the reader has zoomed in far enough that a drawn map
+ * stops being the useful picture.
+ *
+ * A street map of a road project shows a line where the road is meant to be. The
+ * satellite shows whether anything was actually built there, which is the only
+ * question this app exists to ask — so past a city-level zoom the drawn map gets
+ * out of the way, with place names kept on top as a separate layer so the
+ * photograph is still navigable.
+ */
+const SATELLITE_TILE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_LABELS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+/** Esri's imagery terms require the credit line to stay on the map. */
+const SATELLITE_ATTRIBUTION =
+  'Imagery &copy; <a href="https://www.esri.com">Esri</a>, Maxar, Earthstar Geographics';
+
+/**
+ * The zoom at which a city fills the screen. Below it a drawn map is easier to
+ * read; at or above it the imagery is.
+ */
+const SATELLITE_ZOOM = 13;
 
 /** Fallback view when nothing on screen has coordinates. */
 const INDIA_CENTER: LatLngTuple = [22.4, 79.2];
@@ -77,15 +101,22 @@ export function MapCanvas({
   you,
   selectedId,
   onSelect,
+  /** `tall` is for a page where the map is the page rather than a panel on it. */
+  size = "panel",
 }: {
   projects: Project[];
   you?: { lat: number; lng: number } | null;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  size?: "panel" | "tall";
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [api, setApi] = useState<LeafletApi | null>(null);
   const [map, setMap] = useState<LeafletMap | null>(null);
+  const [satellite, setSatellite] = useState(false);
+  // Once the reader picks a basemap themselves, zooming stops changing it under
+  // them — an automatic switch that overrides a deliberate choice is a bug.
+  const pinnedRef = useRef(false);
 
   const pins = useMemo<Pin[]>(
     () =>
@@ -115,6 +146,9 @@ export function MapCanvas({
   const youLng = you && Number.isFinite(you.lng) ? you.lng : null;
 
   const markersRef = useRef(new Map<string, PinMarker>());
+  const layersRef = useRef<{ drawn: TileLayer; imagery: TileLayer; places: TileLayer } | null>(
+    null,
+  );
   const lastPannedRef = useRef<string | null>(null);
 
   // The map can be mounted while its tab is still laid out at 0x0 (the parent
@@ -167,9 +201,27 @@ export function MapCanvas({
       attributionControl: true,
     });
     instance.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
-    api
-      .tileLayer(OSM_TILE_URL, { attribution: OSM_ATTRIBUTION, maxZoom: 18, detectRetina: true })
-      .addTo(instance);
+
+    const drawn = api.tileLayer(OSM_TILE_URL, {
+      attribution: OSM_ATTRIBUTION,
+      maxZoom: 18,
+      detectRetina: true,
+    });
+    const imagery = api.tileLayer(SATELLITE_TILE_URL, {
+      attribution: SATELLITE_ATTRIBUTION,
+      maxZoom: 18,
+    });
+    const places = api.tileLayer(SATELLITE_LABELS_URL, { maxZoom: 18, opacity: 0.9 });
+    layersRef.current = { drawn, imagery, places };
+    drawn.addTo(instance);
+
+    // Crossing the city-level zoom hands the map over to the imagery, unless the
+    // reader has already said which one they want.
+    const onZoom = () => {
+      if (pinnedRef.current) return;
+      setSatellite(instance.getZoom() >= SATELLITE_ZOOM);
+    };
+    instance.on("zoomend", onZoom);
 
     const enableWheel = () => instance.scrollWheelZoom.enable();
     const disableWheel = () => instance.scrollWheelZoom.disable();
@@ -190,6 +242,7 @@ export function MapCanvas({
 
     setMap(instance);
     return () => {
+      layersRef.current = null;
       pendingFitRef.current = null;
       cancelAnimationFrame(raf);
       observer?.disconnect();
@@ -244,7 +297,23 @@ export function MapCanvas({
     };
   }, [api, map, pinsKey, youLat, youLng, runPendingFit]);
 
-  // 4. The reader's own position, deliberately not a status colour.
+  // 4. Swap the basemap. Kept as its own effect so both the zoom threshold and
+  // the toggle below go through exactly one code path.
+  useEffect(() => {
+    const layers = layersRef.current;
+    if (!map || !layers) return;
+    if (satellite) {
+      map.removeLayer(layers.drawn);
+      layers.imagery.addTo(map);
+      layers.places.addTo(map);
+    } else {
+      map.removeLayer(layers.imagery);
+      map.removeLayer(layers.places);
+      layers.drawn.addTo(map);
+    }
+  }, [map, satellite]);
+
+  // 5. The reader's own position, deliberately not a status colour.
   useEffect(() => {
     if (!api || !map || youLat == null || youLng == null) return;
     const marker = api
@@ -261,7 +330,7 @@ export function MapCanvas({
     };
   }, [api, map, youLat, youLng]);
 
-  // 5. Highlight the selected pin and bring it into view. Runs after the marker
+  // 6. Highlight the selected pin and bring it into view. Runs after the marker
   // effect, so it also re-applies the highlight to freshly rebuilt markers.
   useEffect(() => {
     if (!api || !map) return;
@@ -285,7 +354,12 @@ export function MapCanvas({
 
   return (
     <div className="overflow-hidden rounded-3xl border border-border bg-surface-container">
-      <div className="relative aspect-4/5 min-h-80 w-full sm:aspect-16/10">
+      <div
+        className={cn(
+          "relative w-full",
+          size === "tall" ? "h-[62dvh] min-h-96" : "aspect-4/5 min-h-80 sm:aspect-16/10",
+        )}
+      >
         {/* Leaflet needs a sized box of its own, hence the explicit inset-0. */}
         <div
           ref={containerRef}
@@ -293,6 +367,18 @@ export function MapCanvas({
           role="region"
           aria-label="Map of India showing government project locations"
         />
+        <button
+          type="button"
+          onClick={() => {
+            pinnedRef.current = true;
+            setSatellite((current) => !current);
+          }}
+          aria-pressed={satellite}
+          className="absolute right-3 top-3 z-10 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm hover:bg-surface"
+        >
+          {satellite ? "Map" : "Satellite"}
+        </button>
+
         {pins.length === 0 ? (
           <p className="pointer-events-none absolute inset-x-4 bottom-4 z-10 rounded-2xl bg-surface-container-high/90 p-3 text-center text-xs text-muted-foreground">
             None of these projects has a published location yet.

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { List, LocateFixed, Map as MapIcon, Search, ShieldCheck } from "lucide-react";
+import { Flame, LocateFixed, Search, ShieldCheck } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,15 +9,14 @@ import { AppShell } from "@/components/wtf/app-shell";
 import { ApkDownloadCard } from "@/components/wtf/apk-download";
 import { MapCanvas } from "@/components/wtf/map-canvas";
 import { ProjectCard } from "@/components/wtf/project-card";
-import { Radar } from "@/components/wtf/radar";
 import { useFollow } from "@/hooks/use-follow";
 import { useLocation } from "@/hooks/use-location";
-import { useOnboarding } from "@/hooks/use-onboarding";
 import { projectsQuery, ratingsQuery, type Project } from "@/lib/queries";
 import {
   CITY_RADIUS_KM,
   INDIAN_CITIES,
   STATUS_CLASS,
+  STATUS_DOT,
   STATUS_LABEL,
   STATUS_ORDER,
   distanceKm,
@@ -56,56 +55,41 @@ export const Route = createFileRoute("/discover")({
 });
 
 /**
- * The masthead earns its height by carrying live figures rather than a stock
- * illustration — the numbers are the argument the product is making.
+ * A strip, not a masthead.
+ *
+ * This page used to open the app, so it carried the whole argument in a block of
+ * ink half a screen tall. The feed makes that argument now, and what somebody
+ * arriving here wants is the map — so the figures stay, on one line, and the map
+ * gets the height back.
  */
-function Masthead({ projects }: { projects: Project[] }) {
+function Ticker({ projects }: { projects: Project[] }) {
   const stats = useMemo(() => {
     const published = projects.filter((project) => project.published);
     const delayed = published.filter((project) => project.status === "delayed").length;
     const money = published.reduce((sum, project) => sum + (project.budget_inr ?? 0), 0);
-    return { tracked: published.length, delayed, money };
+    const mapped = published.filter(
+      (project) => project.latitude != null && project.longitude != null,
+    ).length;
+    return { tracked: published.length, delayed, money, mapped };
   }, [projects]);
 
   return (
-    <section className="-mx-4 mb-8 bg-ink px-4 py-12 text-ink-foreground md:-mx-6 md:rounded-2xl md:px-10 md:py-14">
-      <div className="max-w-3xl">
-        <p className="eyebrow text-ink-muted">We the Future · India</p>
-        <h2 className="display-hero mt-5 text-balance">
-          Public money leaves a <em className="font-normal italic">paper trail</em>. Follow it.
-        </h2>
-        <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted">
-          Every project here is checked against official records — sanction orders, tenders, audit
-          reports. What the public says about them is kept separate, and labelled as such.
-        </p>
-      </div>
-
-      <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-6 border-t border-ink-line pt-8 sm:grid-cols-3 md:max-w-2xl">
-        {[
-          { label: "Projects tracked", value: stats.tracked.toLocaleString("en-IN") },
-          { label: "Running late", value: stats.delayed.toLocaleString("en-IN") },
-          { label: "Public money covered", value: formatBudget(stats.money) },
-        ].map((stat) => (
-          <div key={stat.label}>
-            <dt className="eyebrow text-ink-muted">{stat.label}</dt>
-            <dd
-              data-numeric
-              className="display-lg mt-2 text-ink-foreground"
-              style={{ fontSize: "clamp(1.5rem, 2.4vw, 2rem)" }}
-            >
-              {stat.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-
-      <Link
-        to="/constitution"
-        className="m3-state mt-9 inline-flex items-center gap-2 rounded-full bg-ink-foreground px-5 py-2.5 text-sm font-semibold text-ink hover:opacity-90"
-      >
-        Read the Constitution
-      </Link>
-    </section>
+    <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm">
+      {[
+        { label: "tracked", value: stats.tracked.toLocaleString("en-IN") },
+        { label: "running late", value: stats.delayed.toLocaleString("en-IN") },
+        { label: "on the map", value: stats.mapped.toLocaleString("en-IN") },
+        { label: "of public money", value: formatBudget(stats.money) },
+      ].map((stat) => (
+        <div key={stat.label} className="flex items-baseline gap-1.5">
+          <dt className="sr-only">{stat.label}</dt>
+          <dd data-numeric className="font-display text-lg font-medium">
+            {stat.value}
+          </dd>
+          <span className="text-xs text-muted-foreground">{stat.label}</span>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -148,13 +132,13 @@ function LocationBar({
           className="m3-state inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3.5 py-2 text-sm font-medium hover:bg-surface-container-high disabled:opacity-60"
         >
           <LocateFixed className="size-4" aria-hidden />
-          {status === "locating" ? "Locating…" : "Use my location"}
+          {status === "locating" ? "Locating…" : "Near me"}
         </button>
       )}
 
       {/* 26 city chips in a wall was noise; a select keeps every city one tap away. */}
       <label className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3.5 py-2 text-sm">
-        <span className="text-muted-foreground">City</span>
+        <span className="sr-only">City</span>
         <select
           value={activeCity?.name ?? ""}
           onChange={(event) => {
@@ -187,31 +171,12 @@ function Discover() {
   const projects = useQuery(projectsQuery());
   const ratings = useQuery(ratingsQuery());
   const location = useLocation();
-  const onboarding = useOnboarding();
   const follow = useFollow();
 
   const [search, setSearch] = useState("");
   const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
   const [cityName, setCityName] = useState<string | null>(null);
-  const [view, setView] = useState<"list" | "map">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [scanned, setScanned] = useState(false);
-  // Where to start somebody who declines location. Fixed on mount so the answer
-  // cannot change under them while the radar is running.
-  const [fallbackCity] = useState(randomMetro);
-  const askedRef = useRef(false);
-
-  // The permission prompt goes up the moment a first-time visitor arrives, with
-  // the radar already turning behind it. Asking on arrival rather than behind a
-  // button is the whole point: the app should know what is near you before it
-  // asks you to do anything.
-  useEffect(() => {
-    if (onboarding.done !== false || askedRef.current) return;
-    askedRef.current = true;
-    if (location.state.status === "idle") location.request();
-    // location.request is stable; onboarding.done is the real trigger.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onboarding.done]);
 
   const here =
     location.state.status === "granted"
@@ -311,6 +276,7 @@ function Discover() {
       you={here}
       selectedId={selectedId}
       onSelect={setSelectedId}
+      size="tall"
     />
   );
 
@@ -382,61 +348,24 @@ function Discover() {
     </ul>
   );
 
-  // First run: scan, then hand over to the map with the pins already on it.
-  if (onboarding.done === false && !scanned) {
-    const declined = location.state.status === "denied" || location.state.status === "unavailable";
-    const origin =
-      location.state.status === "granted"
-        ? { lat: location.state.lat, lng: location.state.lng }
-        : declined
-          ? { lat: fallbackCity.lat, lng: fallbackCity.lng }
-          : null;
-
-    return (
-      <Radar
-        projects={(projects.data ?? []).filter((project) => project.published)}
-        origin={origin}
-        placeLabel={declined ? fallbackCity.name : "you"}
-        approximate={declined}
-        onDone={() => {
-          // Declining location is not a dead end: it just means we start you in
-          // a large city instead, which you can change from the bar at the top.
-          if (declined) location.setManual(fallbackCity.lat, fallbackCity.lng, fallbackCity.name);
-
-          // Once you have been placed, the map is about your city rather than
-          // about the whole country — the same move rasthe.in makes by opening
-          // on one city's wards. But scoping to a city that has nothing in it
-          // would replace a map with an empty one, so the filter is only
-          // applied when there is actually something there to see.
-          const city = declined
-            ? fallbackCity
-            : origin
-              ? nearestCity(origin.lat, origin.lng)
-              : null;
-          if (city) {
-            const inCity = (projects.data ?? []).filter(
-              (project) => project.published && projectInCity(project, city),
-            );
-            if (inCity.length > 0) setCityName(city.name);
-          }
-
-          setScanned(true);
-          setView("map");
-          onboarding.finish();
-        }}
-      />
-    );
-  }
-
   const followed = filtered.filter((item) => follow.isFollowing(item.project.id));
 
   return (
     <AppShell width="wide">
       <h1 className="sr-only">Government projects near you</h1>
 
-      <Masthead projects={projects.data ?? []} />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Ticker projects={projects.data ?? []} />
+        <Link
+          to="/"
+          className="m3-state hidden shrink-0 items-center gap-1.5 rounded-full border border-outline-variant px-3.5 py-2 text-xs font-semibold hover:bg-surface-container-high sm:inline-flex"
+        >
+          <Flame className="size-3.5" aria-hidden />
+          Back to the feed
+        </Link>
+      </div>
 
-      <div className="space-y-4">
+      <div className="mt-5 space-y-3">
         <div className="relative">
           <Search
             className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -459,7 +388,57 @@ function Discover() {
           activeCity={activeCity}
           onCity={pickCity}
         />
+      </div>
 
+      {/* The map is the page now, not a panel beside a list. Zooming into a city
+          hands it over to the aerial imagery, because a drawn map of a road
+          project shows a line where the road is meant to be, and the question
+          this app exists to ask is whether anything was built there. */}
+      <div className="mt-5">{mapNode}</div>
+
+      {/* A rail of what is on the map, in the order the map has them. Tapping one
+          moves the map to its pin, which is how somebody reads a map on a phone
+          without pinching around looking for the dots. */}
+      {filtered.length > 0 ? (
+        <ul className="-mx-4 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:-mx-6 md:px-6">
+          {filtered.slice(0, 30).map(({ project, distance }) => {
+            const active = project.id === selectedId;
+            return (
+              <li key={project.id} className="w-64 shrink-0 snap-start">
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(project.id)}
+                  className={cn(
+                    "m3-state h-full w-full rounded-2xl border p-3 text-left transition-colors",
+                    active
+                      ? "border-primary bg-surface-container-high"
+                      : "border-border bg-surface hover:bg-surface-container-high",
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className={cn("size-2 rounded-full", STATUS_DOT[project.status])} />
+                    {STATUS_LABEL[project.status]}
+                    {distance != null ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span data-numeric>{distance.toFixed(1)} km away</span>
+                      </>
+                    ) : null}
+                  </span>
+                  <span className="mt-1.5 line-clamp-2 block text-sm font-semibold leading-snug">
+                    {project.name}
+                  </span>
+                  <span data-numeric className="mt-1.5 block text-xs text-muted-foreground">
+                    {formatBudget(project.budget_inr)}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <div className="flex flex-wrap gap-2">
           {STATUS_ORDER.map((status) => {
             const active = statuses.includes(status);
@@ -481,40 +460,13 @@ function Discover() {
             );
           })}
         </div>
-      </div>
 
-      <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
         <p className="text-sm text-muted-foreground" aria-live="polite">
           {projects.isLoading
             ? "Loading projects…"
             : `${filtered.length} ${filtered.length === 1 ? "project" : "projects"}`}
           {activeCity ? ` · within ${CITY_RADIUS_KM} km of ${activeCity.name}` : ""}
         </p>
-
-        {/* Desktop shows both panes at once, so the toggle is only for narrow screens. */}
-        <div className="flex rounded-full border border-outline-variant p-0.5 lg:hidden">
-          {(
-            [
-              ["list", List, "List"],
-              ["map", MapIcon, "Map"],
-            ] as const
-          ).map(([key, Icon, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setView(key)}
-              aria-pressed={view === key}
-              className={cn(
-                "m3-state flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium",
-                view === key
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="size-4" aria-hidden /> {label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {followed.length > 0 ? (
@@ -539,15 +491,7 @@ function Discover() {
         </section>
       ) : null}
 
-      <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-8">
-        <div className={cn(view === "map" && "hidden lg:block")}>{listNode}</div>
-
-        {/* The map tracks the list on desktop instead of hiding behind a tab. It
-            carries its own frame and aspect ratio, so it is not boxed again here. */}
-        <div className={cn("lg:sticky lg:top-24", view === "list" && "hidden lg:block")}>
-          {mapNode}
-        </div>
-      </div>
+      <div className="mt-6">{listNode}</div>
 
       <ApkDownloadCard className="mt-10" />
 
