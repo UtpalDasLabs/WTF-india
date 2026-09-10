@@ -134,19 +134,24 @@ def _():
     assert items[0].latitude is None
 
 
-@test("claims the place when the headline names the state rather than the city")
+@test("a statewide story gets the state but no point on the map")
 def _():
+    # Reached through the Mumbai search, but it is about all of Maharashtra, and
+    # pinning it to Mumbai would print a distance that is not true of it.
     feed = rss([{"title": "Maharashtra civic bodies leave road repair funds unspent",
                  "link": "https://news.google.com/mh"}])
     items = ingest.parse_feed(feed, MUMBAI, "Mumbai", NOW)
-    assert items[0].district == "Mumbai" and items[0].state == "Maharashtra"
+    assert items[0].state == "Maharashtra", items[0].state
+    assert items[0].district is None, items[0].district
+    assert items[0].latitude is None and items[0].longitude is None
 
 
 @test("matches a place on whole words only")
 def _():
     agra = ingest.Place("Agra", "Uttar Pradesh", 27.18, 78.02)
-    assert not ingest.place_named("Agrawal firm wins municipal contract", agra)
-    assert ingest.place_named("Agra municipal contract cancelled", agra)
+    assert ingest.place_named("Agrawal firm wins municipal contract", agra) is None
+    assert ingest.place_named("Agra municipal contract cancelled", agra) == "city"
+    assert ingest.place_named("Uttar Pradesh audit flags road funds", agra) == "state"
 
 
 @test("drops a share-price story even though it mentions a contractor")

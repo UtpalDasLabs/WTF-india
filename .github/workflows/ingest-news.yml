@@ -14,8 +14,11 @@ on:
         type: boolean
         default: false
   # A change to the pipeline runs it in inspect mode, so a broken parser is
-  # caught by a pull request rather than by an empty tab six hours later.
+  # caught at merge rather than by an empty tab six hours later. Main only:
+  # firing on a branch push as well meant two runs queued back to back, and
+  # Google throttles the second one.
   push:
+    branches: [main]
     paths:
       - "scripts/ingest-news.py"
       - "scripts/test_ingest_news.py"
@@ -43,9 +46,11 @@ jobs:
       - name: Check the parser
         run: python scripts/test_ingest_news.py
 
+      # A handful of cities is enough to prove the pipeline still works, and
+      # keeps the check on a merge down to seconds rather than minutes.
       - name: Fetch and report only
         if: github.event_name == 'push' || inputs.inspect
-        run: python -u scripts/ingest-news.py --inspect
+        run: python -u scripts/ingest-news.py --inspect --limit-places 6
 
       - name: Fetch and load
         if: github.event_name != 'push' && !inputs.inspect

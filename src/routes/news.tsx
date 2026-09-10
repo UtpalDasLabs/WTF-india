@@ -63,17 +63,10 @@ function Story({ item, distanceKm }: { item: NewsItem; distanceKm: number | null
             ) : null}
             <span aria-hidden>·</span>
             <span>{whenAgo(item.published_at)}</span>
-            {item.district ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{item.district}</span>
-              </>
-            ) : (
-              <>
-                <span aria-hidden>·</span>
-                <span>India</span>
-              </>
-            )}
+            {/* As precise as the headline actually was: a city, a state, or
+                nothing at all. Never more. */}
+            <span aria-hidden>·</span>
+            <span>{item.district ?? item.state ?? "India"}</span>
             {distanceKm != null ? (
               <>
                 <span aria-hidden>·</span>

@@ -33,6 +33,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -53,6 +54,10 @@ USER_AGENT = "we-the-future/1.0 (+https://github.com/UtpalDasLabs/WTF-india)"
 
 # Anything older than this is not news, and keeping it makes the tab look dead.
 MAX_AGE_DAYS = 30
+# A breath between searches. Thirty in a burst gets throttled, and a throttled
+# request costs the full timeout rather than failing fast.
+PAUSE_SECONDS = 1.0
+
 # How many stories to keep for one place, so a city with a busy week cannot
 # crowd out the rest of the country.
 PER_PLACE = 12
@@ -206,7 +211,7 @@ def feed_url(query: str) -> str:
     return f"{FEED}?{urllib.parse.urlencode(params)}"
 
 
-def fetch(url: str, timeout: int = 20) -> bytes:
+def fetch(url: str, timeout: int = 12) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return response.read()
@@ -226,18 +231,23 @@ def split_title(raw: str) -> tuple[str, str | None]:
     return text, None
 
 
-def place_named(title: str, place: Place) -> bool:
+def place_named(title: str, place: Place) -> str | None:
     """
-    Whether the headline really is about this place.
+    How specifically the headline names this place: "city", "state", or not at
+    all.
 
-    Word-boundary matched, so "Agra" does not match "Agrawal" and "Pune" does
-    not match "Puneet". The state counts too: a story headlined "Tamil Nadu:
-    CAG report flags..." is about Tamil Nadu whichever city search found it.
+    The distinction matters on a screen that prints a distance. "Jal Jeevan
+    Mission: 50 percent households face water shortfall in Tamil Nadu" reached
+    us through the Coimbatore search and is about the whole state; pinning it to
+    Coimbatore's coordinates would tell a reader there it is four kilometres
+    away. It gets the state and no point at all.
+
+    Word-boundary matched, so "Agra" does not match "Agrawal".
     """
-    for needle in (place.name, place.state):
+    for level, needle in (("city", place.name), ("state", place.state)):
         if re.search(rf"(?<![A-Za-z]){re.escape(needle)}(?![A-Za-z])", title, re.I):
-            return True
-    return False
+            return level
+    return None
 
 
 def parse_feed(xml_bytes: bytes, place: Place | None, topic: str, now: datetime) -> list[Item]:
@@ -268,9 +278,9 @@ def parse_feed(xml_bytes: bytes, place: Place | None, topic: str, now: datetime)
 
         # A search for "Srinagar" returned a Tamil Nadu audit story, and filing
         # it under Srinagar would have put it 0 km from a reader in Kashmir. A
-        # place is only claimed when the headline actually names it; everything
-        # else is kept as a national story, which is what these mostly are.
-        local = place is not None and place_named(title, place)
+        # place is only claimed as precisely as the headline names it; anything
+        # vaguer is kept as a national story, which is what these mostly are.
+        named = place_named(title, place) if place else None
 
         raw_date = (node.findtext("pubDate") or "").strip()
         try:
@@ -291,10 +301,10 @@ def parse_feed(xml_bytes: bytes, place: Place | None, topic: str, now: datetime)
                 title=title[:500],
                 publisher=publisher[:120] if publisher else None,
                 published_at=published.astimezone(timezone.utc).isoformat(),
-                state=place.state if local else None,
-                district=place.name if local else None,
-                latitude=place.lat if local else None,
-                longitude=place.lng if local else None,
+                state=place.state if named else None,
+                district=place.name if named == "city" else None,
+                latitude=place.lat if named == "city" else None,
+                longitude=place.lng if named == "city" else None,
                 topic=topic,
             )
         )
@@ -392,9 +402,14 @@ def main() -> int:
     collected: list[Item] = []
     failures = 0
 
-    for place in targets:
+    for index, place in enumerate(targets):
         label = place.name if place else "India"
         query = query_for(place)
+        # Thirty requests as fast as the runner can make them gets throttled,
+        # and a throttled request costs the whole timeout. A breath between
+        # them is cheaper than the stall.
+        if index > 0:
+            time.sleep(PAUSE_SECONDS)
         try:
             body = fetch(feed_url(query))
         except (urllib.error.URLError, TimeoutError) as error:
