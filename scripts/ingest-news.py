@@ -77,25 +77,71 @@ MONEY_TERMS = [
     '"contractor blacklisted"',
 ]
 
-# A headline has to contain one of these to be kept, whatever the search
-# returned. The query is a net; this is the sieve.
-KEEP = re.compile(
+# What a headline has to be about.
+#
+# The first live run showed why one flat keyword list is not enough. "Two Fake
+# Sadhus Arrested; Rs 2.80 Lakh Gold Seized" matched on "lakh"; "525 Candidates
+# Complete Document Verification For Ashram School Teacher Posts" matched on
+# "school". Both are real news and neither is this app's subject.
+#
+# So there are two tiers. A strong term is about public money or public works on
+# its own. A weak term only counts alongside another one — "crore" and "road" in
+# the same headline is probably a road contract; "crore" by itself is any story
+# in India.
+STRONG = re.compile(
     r"\b("
-    r"tender|contract|contractor|crore|lakh|budget|fund|funds|funding|"
-    r"audit|cag|scam|corrupt\w*|overrun|delay\w*|stall\w*|"
-    r"municipal|corporation|civic|panchayat|ward|"
-    r"flyover|metro|highway|road|bridge|drain|sewer|hospital|school|"
-    r"smart\s*city|infrastructure|public\s*works|pwd|nhai"
+    r"tender|contract|contractor|sub-?contract\w*|"
+    r"audit|cag|comptroller|vigilance|anti-?corruption|"
+    r"scam|corrupt\w*|bribe\w*|embezzl\w*|misappropriat\w*|siphon\w*|"
+    r"overrun|cost\s+escalation|unspent|undertutilis\w*|diverted|irregularit\w*|"
+    r"blacklist\w*|stalled|shelved|"
+    r"municipal|corporation|civic|panchayat|nagar\s*nigam|nagar\s*palika|"
+    r"smart\s*city|public\s*works|public\s*money|public\s*funds|"
+    r"road\s*works|civil\s*works|pwd|nhai|cpwd|"
+    r"utilisation\s+certificate|cost\s+overrun|time\s+overrun"
     r")\b",
     re.I,
 )
 
-# Things that match KEEP but are not this app's subject.
-DROP = re.compile(
-    r"\b(cricket|film|movie|box\s*office|horoscope|betting|casino|"
-    r"share\s*price|stock\s*market|ipo|mutual\s*fund)\b",
+WEAK = re.compile(
+    r"\b("
+    r"crore|lakh|budget|fund|funds|funding|grant|allocation|"
+    r"road|highway|bridge|flyover|metro|drain|sewer|sewage|culvert|"
+    r"hospital|school|water\s*supply|street\s*light|"
+    r"project|projects|work|works|delay\w*|incomplete|"
+    r"ward|municipality|collector|department"
+    r")\b",
     re.I,
 )
+
+# Never this subject, whatever else the headline says.
+NEVER = re.compile(
+    r"\b(cricket|ipl|football|film|movie|box\s*office|horoscope|betting|casino|"
+    r"share\s*price|stock\s*market|sensex|nifty|ipo|mutual\s*fund|"
+    r"gold\s*rate|petrol\s*price)\b",
+    re.I,
+)
+
+# Usually a different kind of story. These block the weak path but not the
+# strong one, because "Contractor arrested over road scam" is exactly the thing
+# we are looking for.
+UNLIKELY = re.compile(
+    r"\b(arrest\w*|theft|stolen|murder|assault|rape|molest\w*|"
+    r"recruit\w*|vacanc\w*|admit\s*card|exam|result|merit\s*list|"
+    r"horoscope|weather|festival|temple|wedding)\b",
+    re.I,
+)
+
+
+def on_subject(title: str) -> bool:
+    """Two ways in: one strong term, or two weak ones with nothing odd about it."""
+    if NEVER.search(title):
+        return False
+    if STRONG.search(title):
+        return True
+    if UNLIKELY.search(title):
+        return False
+    return len(set(match.group(0).lower() for match in WEAK.finditer(title))) >= 2
 
 
 @dataclass(frozen=True)
@@ -180,6 +226,20 @@ def split_title(raw: str) -> tuple[str, str | None]:
     return text, None
 
 
+def place_named(title: str, place: Place) -> bool:
+    """
+    Whether the headline really is about this place.
+
+    Word-boundary matched, so "Agra" does not match "Agrawal" and "Pune" does
+    not match "Puneet". The state counts too: a story headlined "Tamil Nadu:
+    CAG report flags..." is about Tamil Nadu whichever city search found it.
+    """
+    for needle in (place.name, place.state):
+        if re.search(rf"(?<![A-Za-z]){re.escape(needle)}(?![A-Za-z])", title, re.I):
+            return True
+    return False
+
+
 def parse_feed(xml_bytes: bytes, place: Place | None, topic: str, now: datetime) -> list[Item]:
     """
     Turns one RSS response into items, dropping anything stale, off-subject, or
@@ -203,8 +263,14 @@ def parse_feed(xml_bytes: bytes, place: Place | None, topic: str, now: datetime)
         source = node.find("source")
         publisher = (source.text or "").strip() if source is not None and source.text else from_title
 
-        if not KEEP.search(title) or DROP.search(title):
+        if not on_subject(title):
             continue
+
+        # A search for "Srinagar" returned a Tamil Nadu audit story, and filing
+        # it under Srinagar would have put it 0 km from a reader in Kashmir. A
+        # place is only claimed when the headline actually names it; everything
+        # else is kept as a national story, which is what these mostly are.
+        local = place is not None and place_named(title, place)
 
         raw_date = (node.findtext("pubDate") or "").strip()
         try:
@@ -225,10 +291,10 @@ def parse_feed(xml_bytes: bytes, place: Place | None, topic: str, now: datetime)
                 title=title[:500],
                 publisher=publisher[:120] if publisher else None,
                 published_at=published.astimezone(timezone.utc).isoformat(),
-                state=place.state if place else None,
-                district=place.name if place else None,
-                latitude=place.lat if place else None,
-                longitude=place.lng if place else None,
+                state=place.state if local else None,
+                district=place.name if local else None,
+                latitude=place.lat if local else None,
+                longitude=place.lng if local else None,
                 topic=topic,
             )
         )

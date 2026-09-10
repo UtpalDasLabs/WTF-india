@@ -73,7 +73,7 @@ def test(name):
 
 @test("keeps a story about a stalled civic project")
 def _():
-    feed = rss([{"title": "Andheri flyover work stalled, cost overrun of Rs 40 crore",
+    feed = rss([{"title": "Mumbai: Andheri flyover work stalled, cost overrun of Rs 40 crore",
                  "source": "The Hindu", "link": "https://news.google.com/a"}])
     items = ingest.parse_feed(feed, MUMBAI, "Mumbai", NOW)
     assert len(items) == 1, items
@@ -89,7 +89,67 @@ def _():
     assert ingest.parse_feed(feed, MUMBAI, "Mumbai", NOW) == []
 
 
-@test("drops a share-price story that mentions a contract")
+# The next four are headlines the first live run actually returned. They are the
+# reason the filter has two tiers rather than one keyword list.
+
+@test("drops a gold theft story that only matched on the word lakh")
+def _():
+    assert not ingest.on_subject(
+        "Mumbai: Two Fake Sadhus Arrested In Gold Theft Case; Rs 2.80 Lakh Gold Seized"
+    )
+
+
+@test("drops a teaching-vacancy story that only matched on the word school")
+def _():
+    assert not ingest.on_subject(
+        "Mumbai: 525 Candidates Complete Document Verification For Ashram School Teacher Posts"
+    )
+
+
+@test("keeps a road-works inspection")
+def _():
+    assert ingest.on_subject("IIT Bombay Team Inspects Kumbh Road Works, Conducts Core-Cut Tests")
+
+
+@test("keeps an arrest that is about a contract, despite the word arrested")
+def _():
+    assert ingest.on_subject("Contractor arrested over Rs 4 crore road tender scam")
+
+
+@test("keeps a headline with two weak terms and nothing odd about it")
+def _():
+    assert ingest.on_subject("Rs 200 crore road project still incomplete after four years")
+
+
+@test("does not claim a place the headline never names")
+def _():
+    # A Tamil Nadu story that the Srinagar search returned, which is exactly
+    # what happened on the first live run.
+    srinagar = ingest.Place("Srinagar", "Jammu and Kashmir", 34.08, 74.79)
+    feed = rss([{"title": "Tamil Nadu: CAG report flags government vehicles transferred to private owners",
+                 "link": "https://news.google.com/tn"}])
+    items = ingest.parse_feed(feed, srinagar, "Srinagar", NOW)
+    assert len(items) == 1, items
+    assert items[0].district is None, items[0].district
+    assert items[0].latitude is None
+
+
+@test("claims the place when the headline names the state rather than the city")
+def _():
+    feed = rss([{"title": "Maharashtra civic bodies leave road repair funds unspent",
+                 "link": "https://news.google.com/mh"}])
+    items = ingest.parse_feed(feed, MUMBAI, "Mumbai", NOW)
+    assert items[0].district == "Mumbai" and items[0].state == "Maharashtra"
+
+
+@test("matches a place on whole words only")
+def _():
+    agra = ingest.Place("Agra", "Uttar Pradesh", 27.18, 78.02)
+    assert not ingest.place_named("Agrawal firm wins municipal contract", agra)
+    assert ingest.place_named("Agra municipal contract cancelled", agra)
+
+
+@test("drops a share-price story even though it mentions a contractor")
 def _():
     feed = rss([{"title": "Contractor share price jumps after order win",
                  "source": "Markets", "link": "https://news.google.com/c"}])
@@ -98,7 +158,7 @@ def _():
 
 @test("drops anything older than the window")
 def _():
-    feed = rss([{"title": "Ward budget audit finds missing funds",
+    feed = rss([{"title": "Mumbai ward budget audit finds missing funds",
                  "when": NOW - timedelta(days=ingest.MAX_AGE_DAYS + 2),
                  "link": "https://news.google.com/d"}])
     assert ingest.parse_feed(feed, MUMBAI, "Mumbai", NOW) == []
@@ -106,7 +166,7 @@ def _():
 
 @test("drops a story dated in the future rather than floating it to the top")
 def _():
-    feed = rss([{"title": "Metro tender cancelled by the corporation",
+    feed = rss([{"title": "Mumbai metro tender cancelled by the corporation",
                  "when": NOW + timedelta(days=5), "link": "https://news.google.com/e"}])
     assert ingest.parse_feed(feed, MUMBAI, "Mumbai", NOW) == []
 
@@ -127,11 +187,11 @@ def _():
 
 @test("prefers the source element over the tail of the title")
 def _():
-    feed = rss([{"title": "Civic budget audit ordered - Wire Copy", "source": "Deccan Herald",
+    feed = rss([{"title": "Mumbai civic budget audit ordered - Wire Copy", "source": "Deccan Herald",
                  "link": "https://news.google.com/f"}])
     items = ingest.parse_feed(feed, MUMBAI, "Mumbai", NOW)
     assert items[0].publisher == "Deccan Herald", items[0].publisher
-    assert items[0].title == "Civic budget audit ordered", items[0].title
+    assert items[0].title == "Mumbai civic budget audit ordered", items[0].title
 
 
 @test("a national search leaves the place columns empty rather than guessing")
@@ -157,16 +217,16 @@ def _():
 
 @test("the same headline under two links also becomes one row")
 def _():
-    a = ingest.parse_feed(rss([{"title": "Ward road repair funds unspent, says audit",
+    a = ingest.parse_feed(rss([{"title": "Mumbai ward road repair funds unspent, says audit",
                                 "link": "https://news.google.com/h1"}]), MUMBAI, "Mumbai", NOW)
-    b = ingest.parse_feed(rss([{"title": "Ward road repair funds unspent, says audit!",
+    b = ingest.parse_feed(rss([{"title": "Mumbai ward road repair funds unspent, says audit!",
                                 "link": "https://news.google.com/h2"}]), MUMBAI, "Mumbai", NOW)
     assert len(ingest.dedupe(a + b)) == 1
 
 
 @test("a relative or malformed link is skipped rather than stored")
 def _():
-    feed = rss([{"title": "Municipal budget audit ordered", "link": "/rss/articles/relative"}])
+    feed = rss([{"title": "Mumbai municipal budget audit ordered", "link": "/rss/articles/relative"}])
     assert ingest.parse_feed(feed, MUMBAI, "Mumbai", NOW) == []
 
 
@@ -178,7 +238,7 @@ def _():
 @test("no more than PER_PLACE stories survive one search")
 def _():
     entries = [
-        {"title": f"Ward {n} road repair contract audit ordered",
+        {"title": f"Mumbai ward {n} road repair contract audit ordered",
          "link": f"https://news.google.com/many{n}",
          "when": NOW - timedelta(hours=n)}
         for n in range(ingest.PER_PLACE + 8)
