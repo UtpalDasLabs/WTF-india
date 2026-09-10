@@ -1,4 +1,11 @@
-export type ProjectStatus = "planned" | "ongoing" | "delayed" | "completed" | "finished_early";
+export type ProjectStatus =
+  | "planned"
+  | "ongoing"
+  | "delayed"
+  | "completed"
+  | "finished_early"
+  /** A spot a reader photographed. Nobody has read a document about it yet. */
+  | "unknown";
 
 export type VerifyStatus = "unverified" | "pending_review" | "verified" | "rejected";
 
@@ -19,6 +26,7 @@ export const STATUS_ORDER: ProjectStatus[] = [
   "delayed",
   "completed",
   "finished_early",
+  "unknown",
 ];
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {
@@ -27,6 +35,7 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
   delayed: "Delayed",
   completed: "Completed",
   finished_early: "Finished early",
+  unknown: "Not checked yet",
 };
 
 export const STATUS_CLASS: Record<ProjectStatus, string> = {
@@ -35,6 +44,7 @@ export const STATUS_CLASS: Record<ProjectStatus, string> = {
   delayed: "bg-status-delayed-container text-status-delayed",
   completed: "bg-status-completed-container text-status-completed",
   finished_early: "bg-status-early-container text-status-early",
+  unknown: "bg-surface-container-highest text-muted-foreground",
 };
 
 export const STATUS_DOT: Record<ProjectStatus, string> = {
@@ -43,6 +53,7 @@ export const STATUS_DOT: Record<ProjectStatus, string> = {
   delayed: "bg-status-delayed",
   completed: "bg-status-completed",
   finished_early: "bg-status-early",
+  unknown: "bg-muted-foreground",
 };
 
 export const VERIFY_LABEL: Record<VerifyStatus, string> = {

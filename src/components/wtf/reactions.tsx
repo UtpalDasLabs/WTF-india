@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { deviceId } from "@/hooks/use-device-id";
 import { toggleReaction, type Reaction, type ReactionCounts } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -22,25 +23,6 @@ const FACES: Array<{ key: Reaction; glyph: string; label: string }> = [
 ];
 
 const STORAGE_KEY = "wtf.reacted";
-const VOTER_KEY = "wtf.voter";
-
-/**
- * A random id this browser keeps, so a reaction can be taken back and counted
- * once without anybody having to make an account. It identifies a browser, not
- * a person, and the server never hands it back out.
- */
-function voterId(): string {
-  try {
-    const existing = window.localStorage.getItem(VOTER_KEY);
-    if (existing && existing.length >= 16) return existing;
-    const fresh = crypto.randomUUID();
-    window.localStorage.setItem(VOTER_KEY, fresh);
-    return fresh;
-  } catch {
-    // Storage blocked: still reactable, just not remembered between visits.
-    return crypto.randomUUID();
-  }
-}
 
 function readMine(): Set<string> {
   try {
@@ -87,6 +69,8 @@ export function Reactions({
 
   const onTap = useCallback(
     (reaction: Reaction) => {
+      const voter = deviceId();
+      if (!voter) return;
       const key = `${projectId}:${reaction}`;
       const on = mine.has(key);
 
@@ -101,7 +85,7 @@ export function Reactions({
       }));
 
       react.mutate(
-        { reaction, voter: voterId() },
+        { reaction, voter },
         {
           onError: () => {
             // Put it back rather than leave a count that never happened.

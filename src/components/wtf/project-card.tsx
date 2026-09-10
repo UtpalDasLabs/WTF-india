@@ -18,6 +18,7 @@ const STATUS_RAIL: Record<Project["status"], string> = {
   delayed: "bg-status-delayed",
   completed: "bg-status-completed",
   finished_early: "bg-status-early",
+  unknown: "bg-muted-foreground",
 };
 
 export function ProjectCard({

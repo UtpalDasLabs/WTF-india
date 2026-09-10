@@ -125,6 +125,16 @@ const db = supabase as unknown as {
     name: string,
     args: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  storage: {
+    from: (bucket: string) => {
+      upload: (
+        path: string,
+        file: Blob,
+        options?: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      getPublicUrl: (path: string) => { data: { publicUrl: string } };
+    };
+  };
 };
 
 /**
@@ -387,4 +397,247 @@ export async function toggleReaction(projectId: string, reaction: Reaction, vote
   });
   if (error) throw new Error(error.message);
   return Boolean(data);
+}
+
+/* -------------------------------------------------------------------------
+ * The community layer
+ *
+ * Everything below is written by readers, not by a government document, and is
+ * kept in its own tables and its own queries so the two can never be confused
+ * on screen. Nothing here carries a device id: the server hands back a derived
+ * handle instead, so there is no id on the wire to harvest.
+ * ---------------------------------------------------------------------- */
+
+export const PHOTO_BUCKET = "community-photos";
+
+export type Post = {
+  id: string;
+  project_id: string;
+  kind: "photo" | "comment";
+  body: string | null;
+  photo_path: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  taken_at: string | null;
+  created_at: string;
+  flag_count: number;
+  handle: string;
+};
+
+export type CommunityNote = {
+  id: string;
+  post_id: string;
+  body: string;
+  source_url: string | null;
+  created_at: string;
+  handle: string;
+  helpful: number;
+  not_helpful: number;
+  /** True once enough readers have judged the note and most found it helpful. */
+  shown: boolean;
+};
+
+export type PostCounts = Record<string, { total: number; photos: number; latest: string | null }>;
+
+/** A storage path turned into something an <img> can load. */
+export function photoUrl(path: string): string {
+  return db.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+export const postsQuery = (projectId: string) =>
+  queryOptions({
+    queryKey: ["posts", projectId],
+    queryFn: async (): Promise<Post[]> => {
+      const { data, error } = await db
+        .from("project_posts_public")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Post[];
+    },
+  });
+
+/** How much has been said about every project, for a feed that cannot ask per card. */
+export const postCountsQuery = () =>
+  queryOptions({
+    queryKey: ["post-counts"],
+    queryFn: async (): Promise<PostCounts> => {
+      const { data, error } = await db
+        .from("project_post_counts")
+        .select("project_id, total, photos, latest");
+      if (error) throw new Error(error.message);
+      const counts: PostCounts = {};
+      for (const row of (data ?? []) as Array<{
+        project_id: string;
+        total: number;
+        photos: number;
+        latest: string | null;
+      }>) {
+        counts[row.project_id] = { total: row.total, photos: row.photos, latest: row.latest };
+      }
+      return counts;
+    },
+  });
+
+/**
+ * The most recent photographs across the whole country, newest first.
+ *
+ * The feed uses these as card art: a project somebody stood in front of last
+ * week looks very different from a row in a table. Capped, because a feed only
+ * ever shows the newest one per project.
+ */
+export const recentPhotosQuery = (limit = 400) =>
+  queryOptions({
+    queryKey: ["recent-photos", limit],
+    queryFn: async (): Promise<Post[]> => {
+      const { data, error } = await db
+        .from("project_posts_public")
+        .select("*")
+        .eq("kind", "photo")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Post[];
+    },
+  });
+
+export const notesQuery = (postIds: string[]) =>
+  queryOptions({
+    queryKey: ["notes", [...postIds].sort().join(",")],
+    enabled: postIds.length > 0,
+    queryFn: async (): Promise<Record<string, CommunityNote[]>> => {
+      if (postIds.length === 0) return {};
+      const { data, error } = await db
+        .from("community_notes_public")
+        .select("*")
+        .in("post_id", postIds);
+      if (error) throw new Error(error.message);
+      const byPost: Record<string, CommunityNote[]> = {};
+      for (const note of (data ?? []) as CommunityNote[]) {
+        (byPost[note.post_id] ??= []).push(note);
+      }
+      // A shown note outranks a proposed one; within each, the more helpful wins.
+      for (const list of Object.values(byPost)) {
+        list.sort(
+          (a, b) => Number(b.shown) - Number(a.shown) || b.helpful - a.helpful,
+        );
+      }
+      return byPost;
+    },
+  });
+
+/** The pseudonym the server will show next to anything this device writes. */
+export async function myHandle(device: string): Promise<string> {
+  const { data, error } = await db.rpc("handle_for", { _device: device });
+  if (error) throw new Error(error.message);
+  return String(data ?? "");
+}
+
+export async function createPost(input: {
+  projectId: string;
+  kind: "photo" | "comment";
+  device: string;
+  body?: string | null;
+  photoPath?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  takenAt?: string | null;
+}): Promise<string> {
+  const { data, error } = await db.rpc("create_post", {
+    _project: input.projectId,
+    _kind: input.kind,
+    _device: input.device,
+    _body: input.body ?? null,
+    _photo_path: input.photoPath ?? null,
+    _lat: input.lat ?? null,
+    _lng: input.lng ?? null,
+    _taken_at: input.takenAt ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return String(data);
+}
+
+export async function deleteOwnPost(postId: string, device: string): Promise<boolean> {
+  const { data, error } = await db.rpc("delete_own_post", { _post: postId, _device: device });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+/** Returns how many devices have now flagged the post. */
+export async function flagPost(postId: string, device: string, reason?: string): Promise<number> {
+  const { data, error } = await db.rpc("flag_post", {
+    _post: postId,
+    _device: device,
+    _reason: reason ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
+export async function addNote(input: {
+  postId: string;
+  device: string;
+  body: string;
+  sourceUrl?: string | null;
+}): Promise<string> {
+  const { data, error } = await db.rpc("add_note", {
+    _post: input.postId,
+    _device: input.device,
+    _body: input.body,
+    _source_url: input.sourceUrl ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return String(data);
+}
+
+export async function rateNote(noteId: string, device: string, helpful: boolean): Promise<void> {
+  const { error } = await db.rpc("rate_note", {
+    _note: noteId,
+    _device: device,
+    _helpful: helpful,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * A place somebody photographed that we were not already tracking.
+ *
+ * It lands in the projects table marked `community`, with no money figure and a
+ * status that says outright nobody has checked it, so it can never be mistaken
+ * for a row that came out of a sanction order.
+ */
+export async function createCommunitySpot(input: {
+  device: string;
+  name: string;
+  summary?: string | null;
+  lat: number;
+  lng: number;
+  state?: string | null;
+  district?: string | null;
+}): Promise<string> {
+  const { data, error } = await db.rpc("create_community_spot", {
+    _device: input.device,
+    _name: input.name,
+    _summary: input.summary ?? null,
+    _lat: input.lat,
+    _lng: input.lng,
+    _state: input.state ?? null,
+    _district: input.district ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return String(data);
+}
+
+/** Uploads a photograph and returns its storage path. */
+export async function uploadPhoto(projectHint: string, file: Blob): Promise<string> {
+  const extension = file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${projectHint}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await db.storage.from(PHOTO_BUCKET).upload(path, file, {
+    contentType: file.type,
+    cacheControl: "31536000",
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return path;
 }

@@ -28,6 +28,7 @@ const STATUS_COLOUR: Record<Project["status"], string> = {
   delayed: RED,
   completed: GREEN,
   finished_early: GREEN,
+  unknown: MUTED,
 };
 
 function roundRect(

@@ -516,6 +516,7 @@ export type Database = {
         | "delayed"
         | "completed"
         | "finished_early"
+        | "unknown"
       source_type:
         | "government_portal"
         | "tender_document"
@@ -661,6 +662,7 @@ export const Constants = {
         "delayed",
         "completed",
         "finished_early",
+        "unknown",
       ],
       source_type: [
         "government_portal",
