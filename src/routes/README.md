@@ -19,3 +19,16 @@ is `src/routes/__root.tsx`.
 | `__root.tsx` | app shell — wraps every page; preserve `<Outlet />` |
 
 `routeTree.gen.ts` is auto-generated. Don't edit it by hand.
+
+## What lives where in this app
+
+| Route | What it is |
+| --- | --- |
+| `index.tsx` | The feed. Full-screen cards, one project each, ranked by `lib/hot.ts`. First visit runs the radar and then scopes the feed to your city. |
+| `discover.tsx` | The map. Aerial imagery past a city-level zoom, a rail of what is on screen, then the filtered list. |
+| `trending.tsx` | A redirect to `/`. Trending used to be its own page and those links have been shared. |
+| `projects.$projectId.tsx` | One project: the official record, then the reader thread under it. |
+| `suggest.tsx` | Proposing a project with citations, for the reviewer queue. |
+| `admin.tsx` | The reviewer desk, including flagged posts and photos. |
+| `constitution.tsx` | The Constitution of India, in the languages an official text exists for. |
+| `auth.tsx` | Sign-in. Only reviewers and star ratings need it — posting does not. |

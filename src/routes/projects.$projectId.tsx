@@ -14,7 +14,6 @@ import {
   milestonesQuery,
   postsQuery,
   projectQuery,
-  reviewsQuery,
   sourcesQuery,
 } from "@/lib/queries";
 import { useFollow } from "@/hooks/use-follow";
@@ -46,7 +45,6 @@ function ProjectDetail() {
   const project = useQuery(projectQuery(projectId));
   const sources = useQuery(sourcesQuery(projectId));
   const milestones = useQuery(milestonesQuery(projectId));
-  const reviews = useQuery(reviewsQuery(projectId));
   const posts = useQuery(postsQuery(projectId));
   const follow = useFollow();
 

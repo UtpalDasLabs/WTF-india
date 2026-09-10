@@ -22,10 +22,8 @@ import {
   distanceKm,
   formatBudget,
   matchCityByText,
-  nearestCity,
   normalizeText,
   projectInCity,
-  randomMetro,
   type CityOption,
   type ProjectStatus,
 } from "@/lib/wtf";
