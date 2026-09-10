@@ -538,6 +538,19 @@ export async function myHandle(device: string): Promise<string> {
   return String(data ?? "");
 }
 
+/**
+ * About 100 m. Enough to put a photograph on the right road, not enough to put
+ * it at somebody's door.
+ *
+ * The database rounds too, and would be right to: it cannot trust a client. But
+ * rounding here as well means the precise fix never leaves the phone at all,
+ * which is what the warning shown before the camera opens actually promises.
+ */
+function coarse(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return Math.round(value * 1000) / 1000;
+}
+
 export async function createPost(input: {
   projectId: string;
   kind: "photo" | "comment";
@@ -554,8 +567,8 @@ export async function createPost(input: {
     _device: input.device,
     _body: input.body ?? null,
     _photo_path: input.photoPath ?? null,
-    _lat: input.lat ?? null,
-    _lng: input.lng ?? null,
+    _lat: coarse(input.lat),
+    _lng: coarse(input.lng),
     _taken_at: input.takenAt ?? null,
   });
   if (error) throw new Error(error.message);
@@ -624,8 +637,8 @@ export async function createCommunitySpot(input: {
     _device: input.device,
     _name: input.name,
     _summary: input.summary ?? null,
-    _lat: input.lat,
-    _lng: input.lng,
+    _lat: coarse(input.lat),
+    _lng: coarse(input.lng),
     _state: input.state ?? null,
     _district: input.district ?? null,
   });

@@ -43,6 +43,7 @@ const WARNED_KEY = "wtf.warned";
 type Stage =
   | { step: "warn" }
   | { step: "reading" }
+  | { step: "failed"; message: string }
   | {
       step: "compose";
       photo: Blob;
@@ -221,8 +222,10 @@ export function Capture({
         takenAt: meta.takenAt,
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "That photo could not be read.");
-      setStage({ step: "warn" });
+      setStage({
+        step: "failed",
+        message: error instanceof Error ? error.message : "That photo could not be read.",
+      });
     }
   }, []);
 
@@ -301,9 +304,13 @@ export function Capture({
       onOpenChange(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "That did not send.");
+      // Back to the composer with the photograph and caption intact, rather than
+      // making somebody who is standing in the street take it again.
       setStage(stage);
     }
   }, [caption, match, needsName, newName, onOpenChange, queryClient, reset, stage]);
+
+  if (!open) return null;
 
   return (
     <>
@@ -353,6 +360,29 @@ export function Capture({
               >
                 Pick a different photo
               </button>
+            </div>
+          ) : stage.step === "failed" ? (
+            <div className="px-5 pb-8 pt-6 text-center">
+              <p className="display-sm text-balance">That photo could not be read</p>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                {stage.message}
+              </p>
+              <div className="mt-6 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => pick("library")}
+                  className="m3-state w-full rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background hover:opacity-90"
+                >
+                  Try a different photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => close(false)}
+                  className="m3-state w-full rounded-full px-5 py-3 text-sm font-medium text-muted-foreground hover:bg-surface-container-high"
+                >
+                  Not now
+                </button>
+              </div>
             </div>
           ) : stage.step === "sending" ? (
             <div className="grid place-items-center gap-3 px-5 py-16 text-center">
@@ -478,23 +508,25 @@ export function Capture({
   );
 }
 
-/** The round camera button that sits in the middle of the tab bar. */
-export function CaptureButton({ className }: { className?: string }) {
-  const [open, setOpen] = useState(false);
+/**
+ * The round camera button.
+ *
+ * Deliberately just a button: the sheet it opens is mounted once by the shell,
+ * because the masthead and the tab bar both carry one of these and two mounted
+ * sheets means two hidden file inputs fighting over the same photograph.
+ */
+export function CameraButton({ onClick, className }: { onClick: () => void; className?: string }) {
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Add a photo of a project near you"
-        className={cn(
-          "m3-state grid size-12 place-items-center rounded-full bg-foreground text-background shadow-lg transition-transform active:scale-95",
-          className,
-        )}
-      >
-        <Camera className="size-5" aria-hidden />
-      </button>
-      <Capture open={open} onOpenChange={setOpen} />
-    </>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Add a photo of a project near you"
+      className={cn(
+        "m3-state grid size-12 place-items-center rounded-full bg-foreground text-background shadow-lg transition-transform active:scale-95",
+        className,
+      )}
+    >
+      <Camera className="size-5" aria-hidden />
+    </button>
   );
 }

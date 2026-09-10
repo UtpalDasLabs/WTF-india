@@ -387,7 +387,7 @@ export function PostsThread({
         </div>
       </div>
 
-      <Capture open={capturing} onOpenChange={setCapturing} projectId={projectId} />
+      {capturing ? <Capture open onOpenChange={setCapturing} projectId={projectId} /> : null}
     </>
   );
 }

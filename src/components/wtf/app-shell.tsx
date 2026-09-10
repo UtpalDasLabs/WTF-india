@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Map as MapIcon,
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import { WtfLogo } from "@/components/wtf/logo";
-import { CaptureButton } from "@/components/wtf/capture";
+import { CameraButton, Capture } from "@/components/wtf/capture";
 import { ApkDownloadLink } from "@/components/wtf/apk-download";
 import { useSession } from "@/hooks/use-session";
 import { BUILD_COMMIT, BUILD_TIME, REPO_COMMIT_URL } from "@/lib/build-info";
@@ -37,6 +37,9 @@ export function AppShell({
   immersive?: boolean;
 }) {
   const session = useSession();
+  // One sheet for both cameras. Two would mean two hidden file inputs, and the
+  // photograph landing in whichever one the browser happened to reach first.
+  const [capturing, setCapturing] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   const items = [
@@ -100,7 +103,7 @@ export function AppShell({
               </Link>
             ))}
             <ApkDownloadLink className="ml-2" />
-            <CaptureButton className="ml-2 size-10" />
+            <CameraButton onClick={() => setCapturing(true)} className="ml-2 size-10" />
           </nav>
         </div>
       </header>
@@ -153,7 +156,7 @@ export function AppShell({
               <Fragment key={item.to}>
                 {index === half ? (
                   <li className="flex shrink-0 items-center px-2">
-                    <CaptureButton />
+                    <CameraButton onClick={() => setCapturing(true)} />
                   </li>
                 ) : null}
                 <li className="flex-1">
@@ -179,6 +182,8 @@ export function AppShell({
           })}
         </ul>
       </nav>
+
+      <Capture open={capturing} onOpenChange={setCapturing} />
 
       {immersive ? null : (
         <p className="px-4 pb-2 text-center text-[10px] text-muted-foreground md:hidden">
