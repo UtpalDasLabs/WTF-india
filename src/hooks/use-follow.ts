@@ -100,25 +100,41 @@ function write(next: string[]) {
 /** Pulled once per session: a browser that lost its storage still knows. */
 let reconciled = false;
 
+// The server is the fuller record — a cleared browser, or a second one on the
+// same device id, would otherwise start again from nothing. Merged rather than
+// replaced, so anything followed while offline is not thrown away.
+function pull() {
+  const device = deviceId();
+  if (!device) return;
+  void myFollows(device)
+    .then((remote) => {
+      const merged = [...new Set([...snapshot, ...remote])];
+      if (merged.length !== snapshot.length) write(merged);
+    })
+    .catch(() => {
+      // Offline, or the row is not there. The local list still works.
+    });
+}
+
+/**
+ * Pulls again after signing in.
+ *
+ * The session-long guard is right for a page load and wrong for a sign-in: the
+ * account may be following things from a phone this browser has never seen, and
+ * waiting for a reload to show them makes the button look broken.
+ */
+export function resyncFollows() {
+  reconciled = true;
+  pull();
+}
+
 export function useFollow() {
   const ids = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  // The server is the fuller record — a cleared browser, or a second one on the
-  // same device id, would otherwise start again from nothing. Merged rather
-  // than replaced, so anything followed while offline is not thrown away.
   useEffect(() => {
     if (reconciled) return;
     reconciled = true;
-    const device = deviceId();
-    if (!device) return;
-    void myFollows(device)
-      .then((remote) => {
-        const merged = [...new Set([...snapshot, ...remote])];
-        if (merged.length !== snapshot.length) write(merged);
-      })
-      .catch(() => {
-        // Offline, or the row is not there. The local list still works.
-      });
+    pull();
   }, []);
 
   const toggle = useCallback((id: string) => {

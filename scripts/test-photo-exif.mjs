@@ -27,7 +27,9 @@ function buildJpeg({ little = true, entries = {}, gps = {}, exif = {} } = {}) {
   // Offsets are relative to the start of the TIFF header, and the heap sits
   // after all three directories, whose sizes are known once the counts are.
   const ifdSize = (count) => 2 + count * 12 + 4;
-  const ifd0Count = Object.keys(entries).length + (Object.keys(exif).length ? 1 : 0) +
+  const ifd0Count =
+    Object.keys(entries).length +
+    (Object.keys(exif).length ? 1 : 0) +
     (Object.keys(gps).length ? 1 : 0);
   const ifd0At = 8;
   const exifAt = ifd0At + ifdSize(ifd0Count);
@@ -137,19 +139,28 @@ function buildJpeg({ little = true, entries = {}, gps = {}, exif = {} } = {}) {
   app1Header.writeUInt16BE(0xffe1, 0);
   app1Header.writeUInt16BE(app1Body.length + 2, 2);
 
-  return new Blob([
-    Buffer.from([0xff, 0xd8]),
-    app1Header,
-    app1Body,
-    Buffer.from([0xff, 0xd9]),
-  ]);
+  return new Blob([Buffer.from([0xff, 0xd8]), app1Header, app1Body, Buffer.from([0xff, 0xd9])]);
 }
 
 const MUMBAI = {
   0x0001: [TYPE.ASCII, "N"],
-  0x0002: [TYPE.RATIONAL, [[19, 1], [4, 1], [336, 10]]],
+  0x0002: [
+    TYPE.RATIONAL,
+    [
+      [19, 1],
+      [4, 1],
+      [336, 10],
+    ],
+  ],
   0x0003: [TYPE.ASCII, "E"],
-  0x0004: [TYPE.RATIONAL, [[72, 1], [52, 1], [3972, 100]]],
+  0x0004: [
+    TYPE.RATIONAL,
+    [
+      [72, 1],
+      [52, 1],
+      [3972, 100],
+    ],
+  ],
 };
 
 const tests = [];
@@ -208,9 +219,23 @@ test("a zero fix is treated as absent, not as a point off West Africa", async ()
     buildJpeg({
       gps: {
         0x0001: [TYPE.ASCII, "N"],
-        0x0002: [TYPE.RATIONAL, [[0, 1], [0, 1], [0, 1]]],
+        0x0002: [
+          TYPE.RATIONAL,
+          [
+            [0, 1],
+            [0, 1],
+            [0, 1],
+          ],
+        ],
         0x0003: [TYPE.ASCII, "E"],
-        0x0004: [TYPE.RATIONAL, [[0, 1], [0, 1], [0, 1]]],
+        0x0004: [
+          TYPE.RATIONAL,
+          [
+            [0, 1],
+            [0, 1],
+            [0, 1],
+          ],
+        ],
       },
     }),
   );

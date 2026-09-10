@@ -1,4 +1,7 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
+
+import { deviceId } from "@/hooks/use-device-id";
+import { myReactions } from "@/lib/queries";
 
 /**
  * Which reactions this browser has already given, in one place.
@@ -88,12 +91,43 @@ export function setReacted(key: string, on: boolean) {
   write(on ? [...snapshot, key] : snapshot.filter((item) => item !== key));
 }
 
+/** Pulled once per session, like the follow list. */
+let reconciled = false;
+
+// The server knows every face this device or account has tapped, including ones
+// given on another browser. Merged rather than replaced, so a reaction given
+// while offline is not thrown away.
+function pull() {
+  const device = deviceId();
+  if (!device) return;
+  void myReactions(device)
+    .then((remote) => {
+      const merged = [...new Set([...snapshot, ...remote])];
+      if (merged.length !== snapshot.length) write(merged);
+    })
+    .catch(() => {
+      // Offline. The local list still works.
+    });
+}
+
+/** Pulls again after signing in, for the same reason follows do. */
+export function resyncReactions() {
+  reconciled = true;
+  pull();
+}
+
 export function useReacted() {
   const keys = useSyncExternalStore(
     subscribe,
     () => snapshot,
     () => EMPTY,
   );
+
+  useEffect(() => {
+    if (reconciled) return;
+    reconciled = true;
+    pull();
+  }, []);
   const has = useCallback((key: string) => keys.includes(key), [keys]);
   return { has, set: setReacted };
 }

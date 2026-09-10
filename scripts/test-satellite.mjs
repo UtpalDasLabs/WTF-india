@@ -36,26 +36,34 @@ for (const [name, lat, lng, zoom, x, y] of cases) {
 }
 
 const checks = [
-  ["a zoom past the imagery is pulled back to what exists",
-    () => assert.ok(satelliteTileUrl(12.97, 77.59, 19).includes("/14/"))],
-  ["the url puts y before x, the way this service wants it",
+  [
+    "a zoom past the imagery is pulled back to what exists",
+    () => assert.ok(satelliteTileUrl(12.97, 77.59, 19).includes("/14/")),
+  ],
+  [
+    "the url puts y before x, the way this service wants it",
     () => {
       const { x, y } = tileFor(12.9716, 77.5946, 14);
       assert.ok(satelliteTileUrl(12.9716, 77.5946).endsWith(`/14/${y}/${x}.jpg`));
-    }],
-  ["a project with no coordinates gets no picture rather than a wrong one",
+    },
+  ],
+  [
+    "a project with no coordinates gets no picture rather than a wrong one",
     () => {
       assert.equal(satelliteTileUrl(Number.NaN, 77), null);
       assert.equal(satelliteTileUrl(91, 77), null);
       assert.equal(satelliteTileUrl(12, 181), null);
-    }],
-  ["the poles do not produce a tile number off the edge of the world",
+    },
+  ],
+  [
+    "the poles do not produce a tile number off the edge of the world",
     () => {
       const top = tileFor(89.9, 0, 5);
       assert.ok(top.y >= 0 && top.y < 2 ** 5, `y was ${top.y}`);
       const bottom = tileFor(-89.9, 0, 5);
       assert.ok(bottom.y >= 0 && bottom.y < 2 ** 5, `y was ${bottom.y}`);
-    }],
+    },
+  ],
 ];
 
 for (const [name, run] of checks) {

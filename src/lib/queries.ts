@@ -853,13 +853,31 @@ export const myPostIdsQuery = (device: string | null) =>
   });
 
 /**
- * Attaches this browser's unclaimed posts to the account that just signed in.
+ * Attaches this browser's unclaimed activity to the account that just signed in
+ * — posts, reactions, follows and notes alike.
  *
  * Only rows with no account yet, and only from the device asking, so signing in
- * can never take over somebody else's posts. Returns how many were adopted.
+ * can never take over somebody else's. Anything that would collide with what
+ * the account already has from another browser is left where it is. Returns how
+ * many rows were adopted.
  */
-export async function claimPosts(device: string): Promise<number> {
-  const { data, error } = await db.rpc("claim_posts", { _device: device });
+export async function claimActivity(device: string): Promise<number> {
+  const { data, error } = await db.rpc("claim_activity", { _device: device });
   if (error) throw new Error(error.message);
   return Number(data ?? 0);
+}
+
+/**
+ * The reactions this device or account has already given.
+ *
+ * Same lesson as the delete button: the browser's own list misses everything
+ * given on another device, so the faces came up dark for somebody who had
+ * already tapped them.
+ */
+export async function myReactions(device: string): Promise<string[]> {
+  const { data, error } = await db.rpc("my_reactions", { _device: device });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<{ project_id: string; reaction: string }>).map(
+    (row) => `${row.project_id}:${row.reaction}`,
+  );
 }

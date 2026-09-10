@@ -50,7 +50,9 @@ if (!Array.isArray(rows) || rows.length === 0) {
 /** Drops bookkeeping keys and anything undefined, which PostgREST will not take. */
 function toColumns(row) {
   return Object.fromEntries(
-    Object.entries(row).filter(([column, value]) => !NOT_COLUMNS.has(column) && value !== undefined),
+    Object.entries(row).filter(
+      ([column, value]) => !NOT_COLUMNS.has(column) && value !== undefined,
+    ),
   );
 }
 
