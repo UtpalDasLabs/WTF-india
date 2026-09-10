@@ -787,3 +787,46 @@ export const activityQuery = (device: string | null) =>
       return (data ?? []) as Activity[];
     },
   });
+
+/* -------------------------------------------------------------------------
+ * Following
+ *
+ * The browser keeps its own list so the button answers instantly and offline;
+ * the database keeps the same list so the button can say how many other people
+ * are watching. A count that only counts you is not a count.
+ * ---------------------------------------------------------------------- */
+
+export type FollowCounts = Record<string, number>;
+
+export const followCountsQuery = () =>
+  queryOptions({
+    queryKey: ["follow-counts"],
+    queryFn: async (): Promise<FollowCounts> => {
+      const { data, error } = await db.from("project_follow_counts").select("project_id, total");
+      if (error) throw new Error(error.message);
+      const counts: FollowCounts = {};
+      for (const row of (data ?? []) as Array<{ project_id: string; total: number }>) {
+        counts[row.project_id] = row.total;
+      }
+      return counts;
+    },
+  });
+
+/** Toggles a follow and reports whether it is now on. */
+export async function toggleFollow(projectId: string, device: string): Promise<boolean> {
+  const { data, error } = await db.rpc("toggle_follow", {
+    _project: projectId,
+    _device: device,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+/** What this device already follows, for a browser that has lost its copy. */
+export async function myFollows(device: string): Promise<string[]> {
+  const { data, error } = await db.rpc("my_follows", { _device: device });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<string | { my_follows: string }>).map((row) =>
+    typeof row === "string" ? row : row.my_follows,
+  );
+}

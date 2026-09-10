@@ -11,6 +11,7 @@ import { useLocation } from "@/hooks/use-location";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { rankByHeat } from "@/lib/hot";
 import {
+  followCountsQuery,
   postCountsQuery,
   projectsQuery,
   ratingsQuery,
@@ -46,6 +47,7 @@ function Home() {
   const ratings = useQuery(ratingsQuery());
   const reactions = useQuery(reactionsQuery());
   const counts = useQuery(postCountsQuery());
+  const followers = useQuery(followCountsQuery());
   const posts = useQuery(recentPostsQuery());
   const location = useLocation();
   const onboarding = useOnboarding();
@@ -322,6 +324,9 @@ function Home() {
             photos={newestPhoto}
             counts={counts.data ?? {}}
             reactions={reactions.data}
+            followers={followers.data ?? {}}
+            onReacted={() => void reactions.refetch()}
+            onFollowed={() => void followers.refetch()}
           />
         </>
       )}

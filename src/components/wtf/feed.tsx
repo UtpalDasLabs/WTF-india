@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Camera, ChevronUp, Flame, MapPin, MessageCircle, Share2, Users } from "lucide-react";
 
 import { Capture } from "@/components/wtf/capture";
 import { PostsSheet } from "@/components/wtf/posts-sheet";
-import { Reactions } from "@/components/wtf/reactions";
+import { DOUBLE_TAP_REACTION, Reactions } from "@/components/wtf/reactions";
+import { useDoubleTapReaction } from "@/hooks/use-double-tap-reaction";
 import { useFollow } from "@/hooks/use-follow";
 import { computeDelay } from "@/lib/delay";
 import { shareProjectCard } from "@/lib/share-card";
 import {
   photoUrl,
+  type FollowCounts,
   type Post,
   type PostCounts,
   type Project,
@@ -119,6 +121,28 @@ function figureSize(value: string): string {
   return `min(2.5rem, ${fit(2)})`;
 }
 
+/** The mark a double tap leaves, under the thumb, for as long as it takes to read. */
+function TapBurst({
+  burst,
+  onDone,
+}: {
+  burst: { x: number; y: number; id: number } | null;
+  onDone: () => void;
+}) {
+  if (!burst) return null;
+  return (
+    <span
+      key={burst.id}
+      aria-hidden
+      onAnimationEnd={onDone}
+      className="wtf-tap-burst pointer-events-none absolute z-20 select-none text-6xl"
+      style={{ left: burst.x, top: burst.y }}
+    >
+      {"\u{1F926}"}
+    </span>
+  );
+}
+
 function RailButton({
   label,
   count,
@@ -163,6 +187,9 @@ function FeedCard({
   distanceKm,
   onComment,
   onCamera,
+  onReacted,
+  onFollowed,
+  followers,
 }: {
   card: Card;
   rank: number;
@@ -170,12 +197,28 @@ function FeedCard({
   talk: number;
   reactions: ReactionCounts | undefined;
   distanceKm: number | null;
+  followers: number;
   onComment: () => void;
   onCamera: () => void;
+  onReacted: () => void;
+  onFollowed: () => void;
 }) {
   const { project } = card;
   const follow = useFollow();
   const following = follow.isFollowing(project.id);
+  const tap = useDoubleTapReaction(project.id, DOUBLE_TAP_REACTION, onReacted);
+
+  // The server count is a cached figure that does not yet know about the tap
+  // that just happened. Holding the difference here means the number moves the
+  // instant it is pressed, and the moment the refetched count lands — which
+  // does include you — the difference is dropped rather than added twice.
+  const [delta, setDelta] = useState(0);
+  const seenRef = useRef(followers);
+  if (seenRef.current !== followers) {
+    seenRef.current = followers;
+    if (delta !== 0) setDelta(0);
+  }
+  const shownFollowers = Math.max(followers + delta, 0);
   const figure = heroFigure(project);
   const place = [project.district, project.state].filter(Boolean).join(", ") || "India";
   const satellite =
@@ -184,7 +227,10 @@ function FeedCard({
       : null;
 
   return (
-    <li className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-ink text-ink-foreground">
+    <li
+      onPointerUp={tap.onPointerUp}
+      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-ink text-ink-foreground"
+    >
       {photo?.photo_path ? (
         <img
           src={photoUrl(photo.photo_path)}
@@ -301,8 +347,17 @@ function FeedCard({
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => follow.toggle(project.id)}
+              onClick={() => {
+                setDelta(following ? -1 : 1);
+                follow.toggle(project.id);
+                onFollowed();
+              }}
               aria-pressed={following}
+              aria-label={
+                following
+                  ? `Following. ${shownFollowers} watching`
+                  : `Follow this. ${shownFollowers} watching`
+              }
               className={cn(
                 "m3-state inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold backdrop-blur-sm",
                 following ? "bg-white/20 text-white" : "bg-white text-black",
@@ -310,6 +365,17 @@ function FeedCard({
             >
               <Users className="size-3.5" aria-hidden />
               {following ? "Following" : "Follow this"}
+              {shownFollowers > 0 ? (
+                <span
+                  data-numeric
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                    following ? "bg-white/20 text-white" : "bg-black/10 text-black",
+                  )}
+                >
+                  {shownFollowers.toLocaleString("en-IN")}
+                </span>
+              ) : null}
             </button>
             <Link
               to="/projects/$projectId"
@@ -340,6 +406,8 @@ function FeedCard({
           </RailButton>
         </div>
       </div>
+
+      <TapBurst burst={tap.burst} onDone={tap.clearBurst} />
     </li>
   );
 }
@@ -372,21 +440,29 @@ function PostCard({
   distanceKm,
   onComment,
   onCamera,
+  onReacted,
 }: {
   post: Post;
   project: Project | undefined;
   distanceKm: number | null;
   onComment: () => void;
   onCamera: () => void;
+  onReacted: () => void;
 }) {
   const follow = useFollow();
   const following = project ? follow.isFollowing(project.id) : false;
   const place = project
     ? [project.district, project.state].filter(Boolean).join(", ") || "India"
     : "India";
+  // A double tap on somebody's photograph reacts to the project it is of,
+  // which is the only thing there is to react to.
+  const tap = useDoubleTapReaction(project?.id ?? "", DOUBLE_TAP_REACTION, onReacted);
 
   return (
-    <li className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-ink text-ink-foreground">
+    <li
+      onPointerUp={project ? tap.onPointerUp : undefined}
+      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-ink text-ink-foreground"
+    >
       {post.photo_path ? (
         <img
           src={photoUrl(post.photo_path)}
@@ -503,6 +579,8 @@ function PostCard({
           ) : null}
         </div>
       </div>
+
+      <TapBurst burst={tap.burst} onDone={tap.clearBurst} />
     </li>
   );
 }
@@ -512,12 +590,18 @@ export function Feed({
   photos,
   counts,
   reactions,
+  followers,
+  onReacted,
+  onFollowed,
 }: {
   items: FeedItem[];
   /** The newest photograph for each project, if a reader has taken one. */
   photos: Record<string, Post>;
   counts: PostCounts;
   reactions: ReactionCounts | undefined;
+  followers: FollowCounts;
+  onReacted: () => void;
+  onFollowed: () => void;
 }) {
   const [loaded, setLoaded] = useState(PAGE);
   const [active, setActive] = useState(0);
@@ -563,6 +647,7 @@ export function Feed({
                 onCamera={() => {
                   if (item.project) setCapturing(item.project);
                 }}
+                onReacted={onReacted}
               />
             );
           }
@@ -576,8 +661,11 @@ export function Feed({
               talk={counts[item.card.project.id]?.total ?? 0}
               reactions={reactions}
               distanceKm={item.distanceKm}
+              followers={followers[item.card.project.id] ?? 0}
               onComment={() => setCommenting(item.card.project)}
               onCamera={() => setCapturing(item.card.project)}
+              onReacted={onReacted}
+              onFollowed={onFollowed}
             />
           );
         })}

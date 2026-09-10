@@ -13,6 +13,21 @@ export function appOrigin(): string {
 }
 
 /**
+ * Where the app lives on the public web.
+ *
+ * Not the same thing as `appOrigin()`. Inside the Android build the app is
+ * served from a local origin, so a link built from the current location would
+ * open nothing on the recipient's phone. Anything shared with somebody else has
+ * to point here.
+ */
+export const PUBLIC_SITE = "https://utpaldaslabs.github.io/WTF-india/";
+
+/** The public, forwardable address of one project's page. */
+export function projectUrl(projectId: string): string {
+  return new URL(`projects/${projectId}`, PUBLIC_SITE).href;
+}
+
+/**
  * True in the GitHub Pages build, which is static: there is no SSR server and no
  * server-function endpoint, so anything backed by createServerFn is unavailable.
  * Supabase is unaffected — the browser talks to it directly.

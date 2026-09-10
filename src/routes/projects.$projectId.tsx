@@ -10,7 +10,13 @@ import { EvidencePanel } from "@/components/wtf/evidence-panel";
 import { ShareButton } from "@/components/wtf/share-button";
 import { StatusChip, VerificationChip } from "@/components/wtf/status-chip";
 import { VerifiedTimeline } from "@/components/wtf/timeline";
-import { milestonesQuery, postsQuery, projectQuery, sourcesQuery } from "@/lib/queries";
+import {
+  followCountsQuery,
+  milestonesQuery,
+  postsQuery,
+  projectQuery,
+  sourcesQuery,
+} from "@/lib/queries";
 import { useFollow } from "@/hooks/use-follow";
 import { computeDelay } from "@/lib/delay";
 import { formatBudget, formatDate } from "@/lib/wtf";
@@ -41,6 +47,7 @@ function ProjectDetail() {
   const sources = useQuery(sourcesQuery(projectId));
   const milestones = useQuery(milestonesQuery(projectId));
   const posts = useQuery(postsQuery(projectId));
+  const followers = useQuery(followCountsQuery());
   const follow = useFollow();
 
   if (project.isLoading) {
@@ -116,7 +123,12 @@ function ProjectDetail() {
                 }
               >
                 <Users className="size-4" aria-hidden />
-                {follow.isFollowing(data.id) ? "Joined" : "Join"}
+                {follow.isFollowing(data.id) ? "Following" : "Follow"}
+                {(followers.data?.[data.id] ?? 0) > 0 ? (
+                  <span data-numeric className="tabular-nums opacity-70">
+                    {(followers.data?.[data.id] ?? 0).toLocaleString("en-IN")}
+                  </span>
+                ) : null}
               </button>
             </div>
 

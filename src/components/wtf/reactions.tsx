@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { deviceId } from "@/hooks/use-device-id";
+import { useReacted } from "@/hooks/use-reacted";
 import { toggleReaction, type Reaction, type ReactionCounts } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -22,25 +23,8 @@ const FACES: Array<{ key: Reaction; glyph: string; label: string }> = [
   { key: "again", glyph: "🙄", label: "Here we go again" },
 ];
 
-const STORAGE_KEY = "wtf.reacted";
-
-function readMine(): Set<string> {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
-    return new Set(Array.isArray(parsed) ? parsed.filter((k) => typeof k === "string") : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function writeMine(mine: Set<string>) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...mine]));
-  } catch {
-    // Ignored; the reaction still counted on the server.
-  }
-}
+/** The one a double tap means. Instagram taught everybody this gesture. */
+export const DOUBLE_TAP_REACTION: Reaction = "facepalm";
 
 export function Reactions({
   projectId,
@@ -59,9 +43,7 @@ export function Reactions({
   variant?: "row" | "rail";
 }) {
   const queryClient = useQueryClient();
-  const [mine, setMine] = useState<Set<string>>(() =>
-    typeof window === "undefined" ? new Set() : readMine(),
-  );
+  const mine = useReacted();
   // Held next to the server counts so a tap reads instantly and still settles
   // against the truth when the refetch lands.
   const [pending, setPending] = useState<Record<string, number>>({});
@@ -81,11 +63,7 @@ export function Reactions({
       const key = `${projectId}:${reaction}`;
       const on = mine.has(key);
 
-      const next = new Set(mine);
-      if (on) next.delete(key);
-      else next.add(key);
-      setMine(next);
-      writeMine(next);
+      mine.set(key, !on);
       setPending((current) => ({
         ...current,
         [reaction]: (current[reaction] ?? 0) + (on ? -1 : 1),
@@ -96,8 +74,7 @@ export function Reactions({
         {
           onError: () => {
             // Put it back rather than leave a count that never happened.
-            setMine(new Set(mine));
-            writeMine(mine);
+            mine.set(key, on);
             setPending((current) => ({
               ...current,
               [reaction]: (current[reaction] ?? 0) + (on ? 1 : -1),

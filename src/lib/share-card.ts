@@ -1,5 +1,6 @@
 import { computeDelay } from "@/lib/delay";
 import type { Project } from "@/lib/queries";
+import { projectUrl } from "@/lib/base-path";
 import { STATUS_LABEL, formatBudget, formatDate } from "@/lib/wtf";
 
 /**
@@ -256,27 +257,48 @@ export async function renderShareCard({
 }
 
 /**
- * Hands the card to the OS share sheet where that exists (every Android and iOS
- * browser worth caring about), and falls back to a download elsewhere.
+ * Sends the project as a message: a line of text and a link that opens its page.
+ *
+ * A link is what a forward is for. It is tappable in WhatsApp, it previews, and
+ * it lands the reader on the record itself — the sources, the timeline, what
+ * other people have posted — rather than on a picture of a summary they can do
+ * nothing with. The image card is still rendered on request; it is just no
+ * longer what sharing means.
+ *
+ * The URL is the public site, never the current origin: inside the Android app
+ * the current origin is local, and a link to it opens nothing on anybody else's
+ * phone.
  */
-export async function shareProjectCard(input: ShareCardInput): Promise<"shared" | "downloaded"> {
-  const blob = await renderShareCard(input);
-  const file = new File([blob], `${input.project.id}-wtf.png`, { type: "image/png" });
+export async function shareProjectCard(
+  input: ShareCardInput,
+): Promise<"shared" | "copied" | "downloaded"> {
+  const url = projectUrl(input.project.id);
+  const delay = computeDelay(input.project);
+  const line =
+    delay && delay.days > 0
+      ? `${input.project.name} — ${delay.label}, on public money.`
+      : `${input.project.name} — checked against official records.`;
 
-  if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({
-      files: [file],
-      title: input.project.name,
-      text: `${input.project.name} — checked against official records.`,
-    });
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    await navigator.share({ title: input.project.name, text: line, url });
     return "shared";
   }
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = file.name;
-  link.click();
-  URL.revokeObjectURL(url);
-  return "downloaded";
+  // No share sheet: put it on the clipboard so it is still one paste away.
+  const message = `${line}\n${url}`;
+  try {
+    await navigator.clipboard.writeText(message);
+    return "copied";
+  } catch {
+    // Clipboard refused (an insecure origin, or permission denied). The card is
+    // the last resort rather than nothing at all.
+    const blob = await renderShareCard(input);
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = `${input.project.id}-wtf.png`;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+    return "downloaded";
+  }
 }
