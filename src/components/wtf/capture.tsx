@@ -292,7 +292,7 @@ export function Capture({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["posts", target] }),
         queryClient.invalidateQueries({ queryKey: ["post-counts"] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-photos"] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-posts"] }),
         needsName ? queryClient.invalidateQueries({ queryKey: ["projects"] }) : null,
       ]);
 

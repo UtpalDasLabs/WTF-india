@@ -487,20 +487,21 @@ export const postCountsQuery = () =>
   });
 
 /**
- * The most recent photographs across the whole country, newest first.
+ * The most recent posts across the whole country, newest first.
  *
- * The feed uses these as card art: a project somebody stood in front of last
- * week looks very different from a row in a table. Capped, because a feed only
- * ever shows the newest one per project.
+ * The feed needs these twice over: a photograph becomes the card art for its
+ * project, and any post near the reader becomes a card in its own right. What
+ * somebody photographed down the road this morning is the most current thing
+ * the app knows, and it should not be reduced to a number on somebody else's
+ * card.
  */
-export const recentPhotosQuery = (limit = 400) =>
+export const recentPostsQuery = (limit = 400) =>
   queryOptions({
-    queryKey: ["recent-photos", limit],
+    queryKey: ["recent-posts", limit],
     queryFn: async (): Promise<Post[]> => {
       const { data, error } = await db
         .from("project_posts_public")
         .select("*")
-        .eq("kind", "photo")
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw new Error(error.message);
@@ -715,3 +716,40 @@ export async function removePost(postId: string) {
   const { error } = await db.from("project_posts").delete().eq("id", postId);
   if (error) throw new Error(error.message);
 }
+
+/* -------------------------------------------------------------------------
+ * Reporting
+ *
+ * Headlines only, written by a scheduled job and never by a reader. Nothing
+ * here is the app's own claim: the row is a pointer at somebody else's work,
+ * and the app's job is to say who wrote it and get out of the way.
+ * ---------------------------------------------------------------------- */
+
+export type NewsItem = {
+  id: string;
+  url: string;
+  title: string;
+  publisher: string | null;
+  published_at: string;
+  state: string | null;
+  district: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  topic: string | null;
+};
+
+export const newsQuery = () =>
+  queryOptions({
+    queryKey: ["news"],
+    // Four ingest runs a day, so re-asking every few minutes is wasted breath.
+    staleTime: 15 * 60 * 1000,
+    queryFn: async (): Promise<NewsItem[]> => {
+      const { data, error } = await db
+        .from("news_items")
+        .select("*")
+        .order("published_at", { ascending: false })
+        .limit(300);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as NewsItem[];
+    },
+  });

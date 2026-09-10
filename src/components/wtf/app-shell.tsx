@@ -1,13 +1,6 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  Map as MapIcon,
-  PlusCircle,
-  ScrollText,
-  ShieldCheck,
-  Flame,
-  UserRound,
-} from "lucide-react";
+import { Map as MapIcon, Newspaper, ShieldCheck, Flame, UserRound } from "lucide-react";
 
 import { WtfLogo } from "@/components/wtf/logo";
 import { CameraButton, Capture } from "@/components/wtf/capture";
@@ -42,18 +35,21 @@ export function AppShell({
   const [capturing, setCapturing] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
+  // No "Suggest" tab. The camera is the way to report something, and a second
+  // entry point for the same intention only made people choose between them.
+  // The route still exists and is linked from the places where it is the right
+  // answer — an empty search, a project we do not have.
   const items = [
     { to: "/", label: "Feed", icon: Flame },
     { to: "/discover", label: "Map", icon: MapIcon },
-    { to: "/constitution", label: "Constitution", icon: ScrollText },
-    { to: "/suggest", label: "Suggest", icon: PlusCircle },
+    { to: "/news", label: "News", icon: Newspaper },
     ...(session.isReviewer ? [{ to: "/admin", label: "Review", icon: ShieldCheck } as const] : []),
     { to: "/auth", label: session.userId ? "Account" : "Sign in", icon: UserRound },
   ];
 
   // The camera splits the tab bar down the middle, because taking a photograph
   // of something half-built is the one action the whole product is asking for.
-  const tabs = items.filter((item) => item.to !== "/constitution" && item.to !== "/admin");
+  const tabs = items.filter((item) => item.to !== "/admin");
   const half = Math.ceil(tabs.length / 2);
 
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));

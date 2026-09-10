@@ -1,0 +1,57 @@
+name: Pull money news
+
+# Four times a day. Google News RSS is free and needs no key, but this makes one
+# request per city, so the cadence is set by what is polite rather than by what
+# is possible. "Realtime" in the app means "as of the last run", and the tab says
+# so rather than implying a live wire.
+on:
+  schedule:
+    - cron: "40 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      inspect:
+        description: "Fetch and report without writing anything"
+        type: boolean
+        default: false
+  # A change to the pipeline runs it in inspect mode, so a broken parser is
+  # caught by a pull request rather than by an empty tab six hours later.
+  push:
+    paths:
+      - "scripts/ingest-news.py"
+      - "scripts/test_ingest_news.py"
+      - ".github/workflows/ingest-news.yml"
+
+concurrency:
+  group: ingest-news
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The parser decides what a headline is about and how old it is, and gets
+      # both wrong quietly. It is checked before it is trusted with a live feed.
+      - name: Check the parser
+        run: python scripts/test_ingest_news.py
+
+      - name: Fetch and report only
+        if: github.event_name == 'push' || inputs.inspect
+        run: python -u scripts/ingest-news.py --inspect
+
+      - name: Fetch and load
+        if: github.event_name != 'push' && !inputs.inspect
+        env:
+          # The service role key bypasses row level security. It lives here and
+          # nowhere else — never in the repository, never in the built site.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -u scripts/ingest-news.py --load

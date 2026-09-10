@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Camera, ChevronUp, Flame, MessageCircle, Share2, Users } from "lucide-react";
+import { Camera, ChevronUp, Flame, MapPin, MessageCircle, Share2, Users } from "lucide-react";
 
 import { Capture } from "@/components/wtf/capture";
 import { PostsSheet } from "@/components/wtf/posts-sheet";
@@ -16,6 +16,7 @@ import {
   type ReactionCounts,
 } from "@/lib/queries";
 import type { Heat } from "@/lib/hot";
+import { formatDistance } from "@/lib/nearby";
 import { STATUS_LABEL, formatBudget } from "@/lib/wtf";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,24 @@ import { cn } from "@/lib/utils";
 const PAGE = 10;
 
 type Card = { project: Project; heat: Heat };
+
+/**
+ * A card is either a project or something a reader posted about one.
+ *
+ * The second kind is not decoration. A photograph taken down the road this
+ * morning is the most current thing the app knows about that road, and burying
+ * it as a number on somebody else's card is how a community feature turns back
+ * into a database.
+ */
+export type FeedItem =
+  | { kind: "project"; key: string; card: Card; distanceKm: number | null }
+  | {
+      kind: "post";
+      key: string;
+      post: Post;
+      project: Project | undefined;
+      distanceKm: number | null;
+    };
 
 /**
  * The one figure the card is about.
@@ -136,6 +155,7 @@ function FeedCard({
   photo,
   talk,
   reactions,
+  distanceKm,
   onComment,
   onCamera,
 }: {
@@ -144,6 +164,7 @@ function FeedCard({
   photo: Post | undefined;
   talk: number;
   reactions: ReactionCounts | undefined;
+  distanceKm: number | null;
   onComment: () => void;
   onCamera: () => void;
 }) {
@@ -199,6 +220,15 @@ function FeedCard({
             <span className="inline-flex items-center gap-1 font-medium">
               <Flame className="size-3.5" aria-hidden />#{rank}
             </span>
+            {distanceKm != null ? (
+              <>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1 font-medium">
+                  <MapPin className="size-3.5" aria-hidden />
+                  {formatDistance(distanceKm)} away
+                </span>
+              </>
+            ) : null}
             <span aria-hidden>·</span>
             <span>
               {talk === 0 ? "nobody has been yet" : `${talk} ${talk === 1 ? "post" : "posts"}`}
@@ -286,13 +316,177 @@ function FeedCard({
   );
 }
 
+/** How long ago, in as few characters as a card has room for. */
+function shortAgo(iso: string): string {
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  const minutes = seconds / 60;
+  if (minutes < 60) return `${Math.max(1, Math.round(minutes))}m ago`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${Math.round(hours)}h ago`;
+  const days = hours / 24;
+  if (days < 30) return `${Math.round(days)}d ago`;
+  const months = days / 30.44;
+  if (months < 12) return `${Math.round(months)}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
+/**
+ * Somebody stood there and sent this.
+ *
+ * Held to a visibly different register from a project card: no rank, no flame,
+ * no figure. The photograph and the handle carry it, and the project it belongs
+ * to is a line underneath rather than the headline — because the claim being
+ * made here is "this is what it looks like", not "this is what the record says".
+ */
+function PostCard({
+  post,
+  project,
+  distanceKm,
+  onComment,
+  onCamera,
+}: {
+  post: Post;
+  project: Project | undefined;
+  distanceKm: number | null;
+  onComment: () => void;
+  onCamera: () => void;
+}) {
+  const follow = useFollow();
+  const following = project ? follow.isFollowing(project.id) : false;
+  const place = project
+    ? [project.district, project.state].filter(Boolean).join(", ") || "India"
+    : "India";
+
+  return (
+    <li className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-ink text-ink-foreground">
+      {post.photo_path ? (
+        <img
+          src={photoUrl(post.photo_path)}
+          alt={post.body ?? "Photo posted by a reader"}
+          loading="lazy"
+          className="absolute inset-0 size-full object-cover"
+        />
+      ) : (
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(125% 75% at 50% 0%, var(--status-ongoing) 0%, transparent 68%)",
+            opacity: 0.45,
+          }}
+        />
+      )}
+
+      <div
+        aria-hidden
+        className={cn(
+          "absolute inset-0",
+          post.photo_path
+            ? "bg-gradient-to-t from-black/85 via-black/30 to-black/45"
+            : "bg-gradient-to-t from-ink via-ink/40 to-transparent",
+        )}
+      />
+
+      <div className="relative flex h-full items-end gap-4 px-5 pb-36 pt-[max(3.5rem,env(safe-area-inset-top))] md:px-8 md:pb-20">
+        <div className="flex h-full min-w-0 flex-1 flex-col justify-end">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/75 sm:text-xs">
+            <span className="rounded-full bg-white/20 px-2 py-0.5 font-semibold text-white">
+              Posted by a reader
+            </span>
+            <span className="font-semibold text-white">{post.handle}</span>
+            <span aria-hidden>·</span>
+            <span>{shortAgo(post.created_at)}</span>
+            {distanceKm != null ? (
+              <span className="inline-flex items-center gap-1 font-medium">
+                <MapPin className="size-3.5" aria-hidden />
+                {formatDistance(distanceKm)} away
+              </span>
+            ) : null}
+          </p>
+
+          {post.body ? (
+            <p
+              className={cn(
+                "mt-3 text-balance font-display font-medium leading-tight text-white",
+                post.photo_path ? "line-clamp-4 text-xl sm:text-2xl" : "text-2xl sm:text-3xl",
+              )}
+            >
+              {post.body}
+            </p>
+          ) : (
+            <p className="mt-3 font-display text-xl font-medium leading-tight text-white">
+              A photo from {place}
+            </p>
+          )}
+
+          {project ? (
+            <Link
+              to="/projects/$projectId"
+              params={{ projectId: project.id }}
+              className="mt-3 block max-w-lg text-sm leading-relaxed text-white/70 hover:text-white"
+            >
+              <span className="font-semibold text-white/90">w/{place}</span> · on{" "}
+              <span className="underline underline-offset-2">{project.name}</span>
+            </Link>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onComment}
+              className="m3-state inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-xs font-semibold text-black"
+            >
+              <MessageCircle className="size-3.5" aria-hidden />
+              Reply or add a note
+            </button>
+            {project ? (
+              <button
+                type="button"
+                onClick={() => follow.toggle(project.id)}
+                aria-pressed={following}
+                className={cn(
+                  "m3-state inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold backdrop-blur-sm",
+                  following ? "bg-white/20 text-white" : "bg-black/35 text-white",
+                )}
+              >
+                <Users className="size-3.5" aria-hidden />
+                {following ? "Following" : "Follow this"}
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-center gap-3 pb-1">
+          <RailButton label="Read and add posts" onClick={onComment}>
+            <MessageCircle className="size-5" aria-hidden />
+          </RailButton>
+          <RailButton label="Add your own photo of this" onClick={onCamera}>
+            <Camera className="size-5" aria-hidden />
+          </RailButton>
+          {project ? (
+            <RailButton
+              label="Share the project this is about"
+              onClick={() => {
+                void shareProjectCard({ project, sourcePublisher: null }).catch(() => {});
+              }}
+            >
+              <Share2 className="size-5" aria-hidden />
+            </RailButton>
+          ) : null}
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export function Feed({
-  cards,
+  items,
   photos,
   counts,
   reactions,
 }: {
-  cards: Card[];
+  items: FeedItem[];
   /** The newest photograph for each project, if a reader has taken one. */
   photos: Record<string, Post>;
   counts: PostCounts;
@@ -303,13 +497,16 @@ export function Feed({
   const [commenting, setCommenting] = useState<Project | null>(null);
   const [capturing, setCapturing] = useState<Project | null>(null);
 
-  const shown = useMemo(() => cards.slice(0, loaded), [cards, loaded]);
+  const shown = useMemo(() => items.slice(0, loaded), [items, loaded]);
 
   useEffect(() => {
-    if (active >= loaded - 3 && loaded < cards.length) {
-      setLoaded((current) => Math.min(current + PAGE, cards.length));
+    if (active >= loaded - 3 && loaded < items.length) {
+      setLoaded((current) => Math.min(current + PAGE, items.length));
     }
-  }, [active, loaded, cards.length]);
+  }, [active, loaded, items.length]);
+
+  // Rank is about projects, so a post card does not consume a number.
+  let rank = 0;
 
   return (
     <>
@@ -323,20 +520,40 @@ export function Feed({
           if (el.clientHeight > 0) setActive(Math.round(el.scrollTop / el.clientHeight));
         }}
         className="h-[100dvh] snap-y snap-mandatory overflow-y-auto overscroll-contain"
-        aria-label="Projects, most talked about first"
+        aria-label="Projects and posts, most talked about first"
       >
-        {shown.map((card, index) => (
-          <FeedCard
-            key={card.project.id}
-            card={card}
-            rank={index + 1}
-            photo={photos[card.project.id]}
-            talk={counts[card.project.id]?.total ?? 0}
-            reactions={reactions}
-            onComment={() => setCommenting(card.project)}
-            onCamera={() => setCapturing(card.project)}
-          />
-        ))}
+        {shown.map((item) => {
+          if (item.kind === "post") {
+            return (
+              <PostCard
+                key={item.key}
+                post={item.post}
+                project={item.project}
+                distanceKm={item.distanceKm}
+                onComment={() => {
+                  if (item.project) setCommenting(item.project);
+                }}
+                onCamera={() => {
+                  if (item.project) setCapturing(item.project);
+                }}
+              />
+            );
+          }
+          rank += 1;
+          return (
+            <FeedCard
+              key={item.key}
+              card={item.card}
+              rank={rank}
+              photo={photos[item.card.project.id]}
+              talk={counts[item.card.project.id]?.total ?? 0}
+              reactions={reactions}
+              distanceKm={item.distanceKm}
+              onComment={() => setCommenting(item.card.project)}
+              onCamera={() => setCapturing(item.card.project)}
+            />
+          );
+        })}
       </ul>
 
       {/* One hint, on the first card only, and gone the moment it is obeyed. */}

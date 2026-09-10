@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConstitutionRouteImport } from './routes/constitution'
 import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as NewsRouteImport } from './routes/news'
 import { Route as SuggestRouteImport } from './routes/suggest'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
@@ -43,6 +44,11 @@ const DiscoverRoute = DiscoverRouteImport.update({
   path: '/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuggestRoute = SuggestRouteImport.update({
   id: '/suggest',
   path: '/suggest',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
   '/discover': typeof DiscoverRoute
+  '/news': typeof NewsRoute
   '/suggest': typeof SuggestRoute
   '/trending': typeof TrendingRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
   '/discover': typeof DiscoverRoute
+  '/news': typeof NewsRoute
   '/suggest': typeof SuggestRoute
   '/trending': typeof TrendingRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/constitution': typeof ConstitutionRoute
   '/discover': typeof DiscoverRoute
+  '/news': typeof NewsRoute
   '/suggest': typeof SuggestRoute
   '/trending': typeof TrendingRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/constitution'
     | '/discover'
+    | '/news'
     | '/suggest'
     | '/trending'
     | '/projects/$projectId'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/constitution'
     | '/discover'
+    | '/news'
     | '/suggest'
     | '/trending'
     | '/projects/$projectId'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/constitution'
     | '/discover'
+    | '/news'
     | '/suggest'
     | '/trending'
     | '/projects/$projectId'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ConstitutionRoute: typeof ConstitutionRoute
   DiscoverRoute: typeof DiscoverRoute
+  NewsRoute: typeof NewsRoute
   SuggestRoute: typeof SuggestRoute
   TrendingRoute: typeof TrendingRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/suggest': {
       id: '/suggest'
       path: '/suggest'
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ConstitutionRoute: ConstitutionRoute,
   DiscoverRoute: DiscoverRoute,
+  NewsRoute: NewsRoute,
   SuggestRoute: SuggestRoute,
   TrendingRoute: TrendingRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
