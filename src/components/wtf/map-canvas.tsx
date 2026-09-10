@@ -56,10 +56,15 @@ const SATELLITE_ATTRIBUTION =
   'Sentinel-2 cloudless by <a href="https://s2maps.eu">EOX IT Services</a> (CC BY 4.0)';
 
 /**
- * The zoom at which a city fills the screen. Below it a drawn map is easier to
- * read; at or above it the imagery is.
+ * The imagery is what the map opens on.
+ *
+ * A drawn map shows where a road is meant to go; the satellite shows whether
+ * anything is there. On an app about whether public works exist, the second
+ * question is the one worth answering first, so the toggle now switches away
+ * from the imagery rather than towards it. There is no automatic switch on
+ * zoom any more: a default that changes as you pinch is not a default.
  */
-const SATELLITE_ZOOM = 13;
+const OPENS_ON_SATELLITE = true;
 
 /** Fallback view when nothing on screen has coordinates. */
 const INDIA_CENTER: LatLngTuple = [22.4, 79.2];
@@ -129,11 +134,8 @@ export function MapCanvas({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [api, setApi] = useState<LeafletApi | null>(null);
   const [map, setMap] = useState<LeafletMap | null>(null);
-  const [satellite, setSatellite] = useState(false);
+  const [satellite, setSatellite] = useState(OPENS_ON_SATELLITE);
   const [satelliteBroken, setSatelliteBroken] = useState(false);
-  // Once the reader picks a basemap themselves, zooming stops changing it under
-  // them — an automatic switch that overrides a deliberate choice is a bug.
-  const pinnedRef = useRef(false);
 
   const pins = useMemo<Pin[]>(
     () =>
@@ -238,19 +240,10 @@ export function MapCanvas({
       if (imageryErrors < 4) return;
       imagery.off("tileerror");
       setSatelliteBroken(true);
-      pinnedRef.current = true;
       setSatellite(false);
     });
     layersRef.current = { drawn, imagery };
-    drawn.addTo(instance);
-
-    // Crossing the city-level zoom hands the map over to the imagery, unless the
-    // reader has already said which one they want.
-    const onZoom = () => {
-      if (pinnedRef.current) return;
-      setSatellite(instance.getZoom() >= SATELLITE_ZOOM);
-    };
-    instance.on("zoomend", onZoom);
+    (OPENS_ON_SATELLITE ? imagery : drawn).addTo(instance);
 
     const enableWheel = () => instance.scrollWheelZoom.enable();
     const disableWheel = () => instance.scrollWheelZoom.disable();
@@ -401,10 +394,7 @@ export function MapCanvas({
         ) : (
           <button
             type="button"
-            onClick={() => {
-              pinnedRef.current = true;
-              setSatellite((current) => !current);
-            }}
+            onClick={() => setSatellite((current) => !current)}
             aria-pressed={satellite}
             className="absolute right-3 top-3 z-10 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm hover:bg-surface"
           >

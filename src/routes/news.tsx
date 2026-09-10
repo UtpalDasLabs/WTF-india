@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -169,6 +169,21 @@ function News() {
   const news = useQuery(newsQuery());
   const location = useLocation();
   const [everywhere, setEverywhere] = useState(false);
+  // "" is whatever the location says; otherwise a state or a "state · city".
+  const [region, setRegion] = useState("");
+  const askedRef = useRef(false);
+
+  // Ask here too, not only on the feed. Somebody who opens the app straight
+  // into the news tab should get their own region without pressing anything;
+  // a browser that has already granted it answers with no prompt at all, and
+  // one that has refused refuses again silently.
+  useEffect(() => {
+    if (askedRef.current) return;
+    askedRef.current = true;
+    if (location.state.status === "idle") location.request();
+    // location.request is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const here =
     location.state.status === "granted"
@@ -184,11 +199,39 @@ function News() {
     : null;
 
   /**
+   * The places the headlines are actually about, so the menu never offers a
+   * region with nothing behind it.
+   */
+  const regions = useMemo(() => {
+    const states = new Map<string, Set<string>>();
+    for (const item of news.data ?? []) {
+      if (!item.state) continue;
+      const cities = states.get(item.state) ?? new Set<string>();
+      if (item.district) cities.add(item.district);
+      states.set(item.state, cities);
+    }
+    return [...states.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([state, cities]) => ({ state, cities: [...cities].sort() }));
+  }, [news.data]);
+
+  /**
    * National stories are kept whatever the radius, because a CAG report on
    * highways is about your road too. Only the local ones are measured.
    */
   const shown = useMemo(() => {
     const all = news.data ?? [];
+
+    // A region chosen by hand wins over where the phone happens to be.
+    if (region) {
+      const [state, city] = region.split(" · ");
+      const matched = all.filter((item) => (city ? item.district === city : item.state === state));
+      return {
+        items: matched.map((item) => ({ item, distance: null as number | null })),
+        radiusKm: null as number | null,
+      };
+    }
+
     if (!here || everywhere) {
       return {
         items: all.map((item) => ({ item, distance: null })),
@@ -216,7 +259,7 @@ function News() {
     );
 
     return { items: merged, radiusKm: near.reachKm };
-  }, [news.data, here, everywhere]);
+  }, [news.data, here, everywhere, region]);
 
   return (
     <AppShell>
@@ -239,8 +282,49 @@ function News() {
 
       <ConstitutionBanner />
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {/* Somebody reading about a city they do not happen to be standing in
+            is the normal case, not the exception. */}
+        <label className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3.5 py-2 text-sm">
+          <span className="sr-only">Region</span>
+          <select
+            value={region}
+            onChange={(event) => setRegion(event.target.value)}
+            className="cursor-pointer bg-transparent font-medium outline-none"
+            aria-label="Show headlines from"
+          >
+            <option value="">{here ? "Near me" : "Everywhere"}</option>
+            {regions.map(({ state, cities }) => (
+              <optgroup key={state} label={state}>
+                <option value={state}>All of {state}</option>
+                {cities.map((city) => (
+                  <option key={city} value={`${state} · ${city}`}>
+                    {city}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        {here ? (
+        {region ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3.5 py-2">
+              <LocateFixed className="size-4 text-primary" aria-hidden />
+              {shown.items.length} from{" "}
+              <strong className="font-semibold">{region.replace(" · ", ", ")}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setRegion("")}
+              className="m3-state rounded-full px-3 py-1.5 text-xs font-semibold underline underline-offset-2 hover:bg-surface-container-high"
+            >
+              Clear
+            </button>
+          </div>
+        ) : here ? (
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3.5 py-2">
               <LocateFixed className="size-4 text-primary" aria-hidden />
