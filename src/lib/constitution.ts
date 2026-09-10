@@ -147,44 +147,211 @@ export type ConstitutionPart = {
 
 /** Structure of the Constitution — Parts, with plain-English one-liners. */
 export const CONSTITUTION_PARTS: ConstitutionPart[] = [
-  { part: "Part I", title: "The Union and its Territory", articles: "Articles 1–4", about: "India is a union of states, and how states or their borders can change." },
-  { part: "Part II", title: "Citizenship", articles: "Articles 5–11", about: "Who is a citizen of India and how citizenship works." },
-  { part: "Part III", title: "Fundamental Rights", articles: "Articles 12–35", about: "The rights every person can defend in court, including equality, free speech and life and liberty." },
-  { part: "Part IV", title: "Directive Principles of State Policy", articles: "Articles 36–51", about: "Goals the government should work towards, such as fair wages, health and the environment." },
-  { part: "Part IVA", title: "Fundamental Duties", articles: "Article 51A", about: "What citizens are asked to do in return, like protecting public property and the environment." },
-  { part: "Part V", title: "The Union", articles: "Articles 52–151", about: "The President, Parliament, the Union government, the Supreme Court and the CAG." },
-  { part: "Part VI", title: "The States", articles: "Articles 152–237", about: "Governors, state legislatures, state governments and High Courts." },
-  { part: "Part VIII", title: "The Union Territories", articles: "Articles 239–242", about: "How Union Territories are governed." },
-  { part: "Part IX", title: "The Panchayats", articles: "Articles 243–243O", about: "Elected village and district bodies — the level closest to most public works." },
-  { part: "Part IXA", title: "The Municipalities", articles: "Articles 243P–243ZG", about: "City and town governments, and the money and duties given to them." },
-  { part: "Part X", title: "The Scheduled and Tribal Areas", articles: "Articles 244–244A", about: "Special administration for Scheduled and tribal areas." },
-  { part: "Part XI", title: "Relations between the Union and the States", articles: "Articles 245–263", about: "Who can make which laws, and how money and disputes are handled." },
-  { part: "Part XII", title: "Finance, Property, Contracts and Suits", articles: "Articles 264–300A", about: "Taxes, public money, government contracts and the right to property." },
-  { part: "Part XIII", title: "Trade, Commerce and Intercourse", articles: "Articles 301–307", about: "Free movement of trade across India." },
-  { part: "Part XIV", title: "Services under the Union and the States", articles: "Articles 308–323", about: "Government jobs and public service commissions." },
-  { part: "Part XIVA", title: "Tribunals", articles: "Articles 323A–323B", about: "Special tribunals for service and other disputes." },
-  { part: "Part XV", title: "Elections", articles: "Articles 324–329A", about: "The Election Commission and how elections are run." },
-  { part: "Part XVI", title: "Special Provisions for Certain Classes", articles: "Articles 330–342", about: "Reservations and safeguards for Scheduled Castes, Scheduled Tribes and others." },
-  { part: "Part XVII", title: "Official Language", articles: "Articles 343–351", about: "Languages used by the Union, the states and the courts." },
-  { part: "Part XVIII", title: "Emergency Provisions", articles: "Articles 352–360", about: "What happens during a national, state or financial emergency." },
-  { part: "Part XIX", title: "Miscellaneous", articles: "Articles 361–367", about: "Assorted provisions, including protections for high offices." },
-  { part: "Part XX", title: "Amendment of the Constitution", articles: "Article 368", about: "How the Constitution itself can be changed." },
-  { part: "Part XXI", title: "Temporary, Transitional and Special Provisions", articles: "Articles 369–392", about: "Special arrangements for particular states and situations." },
-  { part: "Part XXII", title: "Short Title, Commencement and Repeals", articles: "Articles 393–395", about: "The name of the Constitution and the date it came into force." },
+  {
+    part: "Part I",
+    title: "The Union and its Territory",
+    articles: "Articles 1–4",
+    about: "India is a union of states, and how states or their borders can change.",
+  },
+  {
+    part: "Part II",
+    title: "Citizenship",
+    articles: "Articles 5–11",
+    about: "Who is a citizen of India and how citizenship works.",
+  },
+  {
+    part: "Part III",
+    title: "Fundamental Rights",
+    articles: "Articles 12–35",
+    about:
+      "The rights every person can defend in court, including equality, free speech and life and liberty.",
+  },
+  {
+    part: "Part IV",
+    title: "Directive Principles of State Policy",
+    articles: "Articles 36–51",
+    about:
+      "Goals the government should work towards, such as fair wages, health and the environment.",
+  },
+  {
+    part: "Part IVA",
+    title: "Fundamental Duties",
+    articles: "Article 51A",
+    about:
+      "What citizens are asked to do in return, like protecting public property and the environment.",
+  },
+  {
+    part: "Part V",
+    title: "The Union",
+    articles: "Articles 52–151",
+    about: "The President, Parliament, the Union government, the Supreme Court and the CAG.",
+  },
+  {
+    part: "Part VI",
+    title: "The States",
+    articles: "Articles 152–237",
+    about: "Governors, state legislatures, state governments and High Courts.",
+  },
+  {
+    part: "Part VIII",
+    title: "The Union Territories",
+    articles: "Articles 239–242",
+    about: "How Union Territories are governed.",
+  },
+  {
+    part: "Part IX",
+    title: "The Panchayats",
+    articles: "Articles 243–243O",
+    about: "Elected village and district bodies — the level closest to most public works.",
+  },
+  {
+    part: "Part IXA",
+    title: "The Municipalities",
+    articles: "Articles 243P–243ZG",
+    about: "City and town governments, and the money and duties given to them.",
+  },
+  {
+    part: "Part X",
+    title: "The Scheduled and Tribal Areas",
+    articles: "Articles 244–244A",
+    about: "Special administration for Scheduled and tribal areas.",
+  },
+  {
+    part: "Part XI",
+    title: "Relations between the Union and the States",
+    articles: "Articles 245–263",
+    about: "Who can make which laws, and how money and disputes are handled.",
+  },
+  {
+    part: "Part XII",
+    title: "Finance, Property, Contracts and Suits",
+    articles: "Articles 264–300A",
+    about: "Taxes, public money, government contracts and the right to property.",
+  },
+  {
+    part: "Part XIII",
+    title: "Trade, Commerce and Intercourse",
+    articles: "Articles 301–307",
+    about: "Free movement of trade across India.",
+  },
+  {
+    part: "Part XIV",
+    title: "Services under the Union and the States",
+    articles: "Articles 308–323",
+    about: "Government jobs and public service commissions.",
+  },
+  {
+    part: "Part XIVA",
+    title: "Tribunals",
+    articles: "Articles 323A–323B",
+    about: "Special tribunals for service and other disputes.",
+  },
+  {
+    part: "Part XV",
+    title: "Elections",
+    articles: "Articles 324–329A",
+    about: "The Election Commission and how elections are run.",
+  },
+  {
+    part: "Part XVI",
+    title: "Special Provisions for Certain Classes",
+    articles: "Articles 330–342",
+    about: "Reservations and safeguards for Scheduled Castes, Scheduled Tribes and others.",
+  },
+  {
+    part: "Part XVII",
+    title: "Official Language",
+    articles: "Articles 343–351",
+    about: "Languages used by the Union, the states and the courts.",
+  },
+  {
+    part: "Part XVIII",
+    title: "Emergency Provisions",
+    articles: "Articles 352–360",
+    about: "What happens during a national, state or financial emergency.",
+  },
+  {
+    part: "Part XIX",
+    title: "Miscellaneous",
+    articles: "Articles 361–367",
+    about: "Assorted provisions, including protections for high offices.",
+  },
+  {
+    part: "Part XX",
+    title: "Amendment of the Constitution",
+    articles: "Article 368",
+    about: "How the Constitution itself can be changed.",
+  },
+  {
+    part: "Part XXI",
+    title: "Temporary, Transitional and Special Provisions",
+    articles: "Articles 369–392",
+    about: "Special arrangements for particular states and situations.",
+  },
+  {
+    part: "Part XXII",
+    title: "Short Title, Commencement and Repeals",
+    articles: "Articles 393–395",
+    about: "The name of the Constitution and the date it came into force.",
+  },
 ];
 
 export type KeyArticle = { article: string; title: string; about: string };
 
 /** A few articles most useful to someone checking public works and services. */
 export const KEY_ARTICLES: KeyArticle[] = [
-  { article: "Article 14", title: "Equality before the law", about: "The state cannot deny anyone equality before the law or equal protection of the law." },
-  { article: "Article 15", title: "No discrimination", about: "No discrimination on grounds of religion, race, caste, sex or place of birth." },
-  { article: "Article 19", title: "Freedom of speech and expression", about: "Includes the freedom to speak, assemble peacefully, move and reside anywhere in India." },
-  { article: "Article 21", title: "Protection of life and personal liberty", about: "Courts have read this to include a life with dignity, clean water and a clean environment." },
-  { article: "Article 21A", title: "Right to education", about: "Free and compulsory education for children aged six to fourteen." },
-  { article: "Article 32", title: "Right to constitutional remedies", about: "You can go directly to the Supreme Court when a fundamental right is broken." },
-  { article: "Article 51A", title: "Fundamental duties", about: "Duties of every citizen, including protecting public property and the natural environment." },
-  { article: "Article 243G", title: "Powers of Panchayats", about: "States may give village bodies the power to plan and run local works and services." },
-  { article: "Article 243W", title: "Powers of Municipalities", about: "States may give city bodies responsibility for roads, water, sanitation and other local works." },
-  { article: "Article 148", title: "Comptroller and Auditor-General of India", about: "The independent auditor whose reports often reveal how public projects were actually run." },
+  {
+    article: "Article 14",
+    title: "Equality before the law",
+    about: "The state cannot deny anyone equality before the law or equal protection of the law.",
+  },
+  {
+    article: "Article 15",
+    title: "No discrimination",
+    about: "No discrimination on grounds of religion, race, caste, sex or place of birth.",
+  },
+  {
+    article: "Article 19",
+    title: "Freedom of speech and expression",
+    about: "Includes the freedom to speak, assemble peacefully, move and reside anywhere in India.",
+  },
+  {
+    article: "Article 21",
+    title: "Protection of life and personal liberty",
+    about:
+      "Courts have read this to include a life with dignity, clean water and a clean environment.",
+  },
+  {
+    article: "Article 21A",
+    title: "Right to education",
+    about: "Free and compulsory education for children aged six to fourteen.",
+  },
+  {
+    article: "Article 32",
+    title: "Right to constitutional remedies",
+    about: "You can go directly to the Supreme Court when a fundamental right is broken.",
+  },
+  {
+    article: "Article 51A",
+    title: "Fundamental duties",
+    about:
+      "Duties of every citizen, including protecting public property and the natural environment.",
+  },
+  {
+    article: "Article 243G",
+    title: "Powers of Panchayats",
+    about: "States may give village bodies the power to plan and run local works and services.",
+  },
+  {
+    article: "Article 243W",
+    title: "Powers of Municipalities",
+    about:
+      "States may give city bodies responsibility for roads, water, sanitation and other local works.",
+  },
+  {
+    article: "Article 148",
+    title: "Comptroller and Auditor-General of India",
+    about:
+      "The independent auditor whose reports often reveal how public projects were actually run.",
+  },
 ];

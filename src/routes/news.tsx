@@ -222,13 +222,15 @@ function News() {
     <AppShell>
       <h1 className="sr-only">Money news near you</h1>
 
-      <section className="-mx-4 mb-6 bg-ink px-4 py-9 text-ink-foreground md:-mx-6 md:rounded-2xl md:px-10 md:py-11">
-        <p className="eyebrow flex items-center gap-2 text-ink-muted">
+      {/* No panel of its own. The whole app is ink now, so a block of ink on
+          top of it only served to hide the wash behind it. */}
+      <section className="mb-6 py-2">
+        <p className="eyebrow flex items-center gap-2 text-muted-foreground">
           <Newspaper className="size-4" aria-hidden />
           Being reported now
         </p>
-        <h2 className="display-hero mt-4 text-balance">What is being said about the money.</h2>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-muted">
+        <h2 className="display-lg mt-3 text-balance">What is being said about the money.</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
           Tenders, cost overruns, audits and civic budgets — headlines from the press, for the part
           of India you are in. The ledger in this app is accurate and slow; this is the part that
           moves. We link out and never reprint: the reporting belongs to whoever did it.

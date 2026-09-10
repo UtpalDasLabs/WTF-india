@@ -37,17 +37,23 @@ const OSM_ATTRIBUTION =
  *
  * A street map of a road project shows a line where the road is meant to be. The
  * satellite shows whether anything was actually built there, which is the only
- * question this app exists to ask — so past a city-level zoom the drawn map gets
- * out of the way, with place names kept on top as a separate layer so the
- * photograph is still navigable.
+ * question this app exists to ask.
+ *
+ * This was Esri's World Imagery, which started answering "API key required" —
+ * the licensing risk that came with using it. Sentinel-2 cloudless is the
+ * honest replacement: European Space Agency imagery, processed by EOX, released
+ * under CC BY 4.0, and genuinely free of keys and quotas. The trade is
+ * resolution — it runs out at zoom 14, roughly a neighbourhood rather than a
+ * rooftop — so beyond that Leaflet stretches the last real tile rather than
+ * asking for one that does not exist.
  */
 const SATELLITE_TILE_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-const SATELLITE_LABELS_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
-/** Esri's imagery terms require the credit line to stay on the map. */
+  "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg";
+/** Past this there is no more imagery, only a bigger version of the last of it. */
+export const SATELLITE_MAX_NATIVE_ZOOM = 14;
+/** Required by CC BY 4.0. Do not drop this. */
 const SATELLITE_ATTRIBUTION =
-  'Imagery &copy; <a href="https://www.esri.com">Esri</a>, Maxar, Earthstar Geographics';
+  'Sentinel-2 cloudless by <a href="https://s2maps.eu">EOX IT Services</a> (CC BY 4.0)';
 
 /**
  * The zoom at which a city fills the screen. Below it a drawn map is easier to
@@ -124,6 +130,7 @@ export function MapCanvas({
   const [api, setApi] = useState<LeafletApi | null>(null);
   const [map, setMap] = useState<LeafletMap | null>(null);
   const [satellite, setSatellite] = useState(false);
+  const [satelliteBroken, setSatelliteBroken] = useState(false);
   // Once the reader picks a basemap themselves, zooming stops changing it under
   // them — an automatic switch that overrides a deliberate choice is a bug.
   const pinnedRef = useRef(false);
@@ -156,9 +163,7 @@ export function MapCanvas({
   const youLng = you && Number.isFinite(you.lng) ? you.lng : null;
 
   const markersRef = useRef(new Map<string, PinMarker>());
-  const layersRef = useRef<{ drawn: TileLayer; imagery: TileLayer; places: TileLayer } | null>(
-    null,
-  );
+  const layersRef = useRef<{ drawn: TileLayer; imagery: TileLayer } | null>(null);
   const lastPannedRef = useRef<string | null>(null);
 
   // The map can be mounted while its tab is still laid out at 0x0 (the parent
@@ -221,9 +226,22 @@ export function MapCanvas({
     const imagery = api.tileLayer(SATELLITE_TILE_URL, {
       attribution: SATELLITE_ATTRIBUTION,
       maxZoom: 18,
+      maxNativeZoom: SATELLITE_MAX_NATIVE_ZOOM,
     });
-    const places = api.tileLayer(SATELLITE_LABELS_URL, { maxZoom: 18, opacity: 0.9 });
-    layersRef.current = { drawn, imagery, places };
+    // A tile provider that starts refusing requests should not leave a grey
+    // void with no explanation — the last one did exactly that. One failure is
+    // a hiccup; several mean the source is gone, so the map goes back to the
+    // drawn one and says so.
+    let imageryErrors = 0;
+    imagery.on("tileerror", () => {
+      imageryErrors += 1;
+      if (imageryErrors < 4) return;
+      imagery.off("tileerror");
+      setSatelliteBroken(true);
+      pinnedRef.current = true;
+      setSatellite(false);
+    });
+    layersRef.current = { drawn, imagery };
     drawn.addTo(instance);
 
     // Crossing the city-level zoom hands the map over to the imagery, unless the
@@ -316,10 +334,8 @@ export function MapCanvas({
     if (satellite) {
       map.removeLayer(layers.drawn);
       layers.imagery.addTo(map);
-      layers.places.addTo(map);
     } else {
       map.removeLayer(layers.imagery);
-      map.removeLayer(layers.places);
       layers.drawn.addTo(map);
     }
   }, [map, satellite]);
@@ -378,17 +394,23 @@ export function MapCanvas({
           role="region"
           aria-label="Map of India showing government project locations"
         />
-        <button
-          type="button"
-          onClick={() => {
-            pinnedRef.current = true;
-            setSatellite((current) => !current);
-          }}
-          aria-pressed={satellite}
-          className="absolute right-3 top-3 z-10 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm hover:bg-surface"
-        >
-          {satellite ? "Map" : "Satellite"}
-        </button>
+        {satelliteBroken ? (
+          <p className="absolute right-3 top-3 z-10 max-w-56 rounded-2xl bg-surface/90 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground shadow-sm backdrop-blur-sm">
+            The satellite imagery is not answering right now, so this is the drawn map.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              pinnedRef.current = true;
+              setSatellite((current) => !current);
+            }}
+            aria-pressed={satellite}
+            className="absolute right-3 top-3 z-10 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm hover:bg-surface"
+          >
+            {satellite ? "Map" : "Satellite"}
+          </button>
+        )}
 
         {pins.length === 0 ? (
           <p className="pointer-events-none absolute inset-x-4 bottom-4 z-10 rounded-2xl bg-surface-container-high/90 p-3 text-center text-xs text-muted-foreground">

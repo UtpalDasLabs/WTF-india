@@ -59,13 +59,28 @@ export function AppShell({
   return (
     <div
       className={cn(
-        "flex flex-col bg-background",
+        "relative flex flex-col bg-background",
         immersive ? "h-[100dvh] overflow-hidden" : "min-h-screen pb-20 md:pb-0",
       )}
     >
+      {/* The same wash the feed cards have, so a page and a card feel like the
+          same room. Fixed rather than absolute: it stays put while the page
+          scrolls, which is what makes it read as light in the room rather than
+          as a band painted across the top of the document. */}
+      {immersive ? null : (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-0"
+          style={{
+            background:
+              "radial-gradient(120% 60% at 50% 0%, var(--status-delayed) 0%, transparent 62%)",
+            opacity: 0.28,
+          }}
+        />
+      )}
       <header
         className={cn(
-          "sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl",
+          "sticky top-0 z-30 border-b border-border bg-background/70 backdrop-blur-xl",
           immersive && "hidden md:block",
         )}
       >
@@ -106,14 +121,19 @@ export function AppShell({
 
       <main
         className={cn(
-          "w-full flex-1",
+          "relative z-10 w-full flex-1",
           immersive ? "min-h-0" : cn("mx-auto px-4 py-6 md:px-6 md:py-10", contentWidth),
         )}
       >
         {children}
       </main>
 
-      <footer className={cn("mt-auto hidden border-t border-border", !immersive && "md:block")}>
+      <footer
+        className={cn(
+          "relative z-10 mt-auto hidden border-t border-border",
+          !immersive && "md:block",
+        )}
+      >
         <div
           className={cn(
             "mx-auto flex flex-wrap items-center justify-between gap-4 px-4 py-6 md:px-6",

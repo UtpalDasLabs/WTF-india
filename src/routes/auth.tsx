@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ActivityTimeline } from "@/components/wtf/activity-timeline";
 import { AppShell } from "@/components/wtf/app-shell";
 import { NATIVE_OAUTH_REDIRECT } from "@/hooks/use-oauth-deeplink";
 import { useSession } from "@/hooks/use-session";
@@ -126,6 +127,8 @@ function AuthPage() {
           >
             <LogOut className="mr-1.5 size-4" aria-hidden /> Sign out
           </Button>
+
+          <ActivityTimeline />
         </div>
       </AppShell>
     );
@@ -201,6 +204,11 @@ function AuthPage() {
         >
           {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
         </button>
+
+        {/* Shown to signed-out readers too. Almost everything anybody does here
+            is keyed to the browser, so there is already a history to look at
+            before there is an account to attach it to. */}
+        <ActivityTimeline />
       </div>
     </AppShell>
   );

@@ -61,15 +61,7 @@ const PERSONAL_DATA = [
   /\b[A-Z]{5}\d{4}[A-Z]\b/, // pan-like
 ];
 
-const UNVERIFIED_CLAIM = [
-  "took a bribe",
-  "bribe",
-  "stole",
-  "corrupt",
-  "scam",
-  "fraud",
-  "kickback",
-];
+const UNVERIFIED_CLAIM = ["took a bribe", "bribe", "stole", "corrupt", "scam", "fraud", "kickback"];
 
 function maskWord(word: string): string {
   if (word.length <= 2) return "*".repeat(word.length);
@@ -110,8 +102,7 @@ export function moderateText(input: string): ModerationResult {
     return {
       action: "remove",
       label: "hate_speech",
-      reason:
-        "This attacks a group of people. Feedback about the project itself is welcome.",
+      reason: "This attacks a group of people. Feedback about the project itself is welcome.",
       maskedText: masked,
       severity: "high",
     };
@@ -145,8 +136,7 @@ export function moderateText(input: string): ModerationResult {
     return {
       action: "mask",
       label: "profanity_masked",
-      reason:
-        "Strong language was masked with asterisks. Your point is still published in full.",
+      reason: "Strong language was masked with asterisks. Your point is still published in full.",
       maskedText: masked,
       severity: "low",
     };
@@ -178,7 +168,7 @@ export function moderateImageMeta(url: string, caption: string): ImageModeration
       action: "hold",
       label: "unreadable_image_link",
       reason: "We could not open this image link, so a reviewer will look at it.",
-      };
+    };
   }
   if (captionCheck.action === "hold") {
     return { action: "hold", label: captionCheck.label, reason: captionCheck.reason };

@@ -120,9 +120,7 @@ export const runResearchAgent = createServerFn({ method: "POST" })
       throw new Error("The research agent returned something unreadable.");
     }
 
-    const candidates = z
-      .object({ candidates: z.array(candidateSchema) })
-      .parse(parsed).candidates;
+    const candidates = z.object({ candidates: z.array(candidateSchema) }).parse(parsed).candidates;
 
     const officialDomains = [
       ".gov.in",

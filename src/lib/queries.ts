@@ -753,3 +753,37 @@ export const newsQuery = () =>
       return (data ?? []) as NewsItem[];
     },
   });
+
+/* -------------------------------------------------------------------------
+ * Your own history
+ *
+ * Keyed to the device, not the account, because that is how everything in the
+ * community layer works: you can react, post, photograph and write notes
+ * without ever signing in, and the record of it has to be readable the same
+ * way. Hand the function your own device id and it hands back your own history
+ * — a device id is a random UUID the server never gives out, so knowing one
+ * means it is yours.
+ * ---------------------------------------------------------------------- */
+
+export type ActivityKind = "photo" | "comment" | "note" | "reaction" | "spot";
+
+export type Activity = {
+  kind: ActivityKind;
+  happened_at: string;
+  project_id: string;
+  project_name: string;
+  detail: string;
+  post_id: string | null;
+};
+
+export const activityQuery = (device: string | null) =>
+  queryOptions({
+    queryKey: ["activity", device],
+    enabled: Boolean(device),
+    queryFn: async (): Promise<Activity[]> => {
+      if (!device) return [];
+      const { data, error } = await db.rpc("my_activity", { _device: device });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Activity[];
+    },
+  });

@@ -17,6 +17,7 @@ import {
 } from "@/lib/queries";
 import type { Heat } from "@/lib/hot";
 import { formatDistance } from "@/lib/nearby";
+import { SATELLITE_CREDIT, satelliteTileUrl } from "@/lib/satellite";
 import { STATUS_LABEL, formatBudget } from "@/lib/wtf";
 import { cn } from "@/lib/utils";
 
@@ -108,10 +109,14 @@ function heroFigure(project: Project): { value: string; caption: string; alarmin
  */
 function figureSize(value: string): string {
   const length = value.length;
-  if (length <= 6) return "clamp(3.5rem, 20vw, 7rem)";
-  if (length <= 10) return "clamp(2.75rem, 14vw, 5rem)";
-  if (length <= 16) return "clamp(2rem, 10vw, 3.5rem)";
-  return "clamp(1.75rem, 7.5vw, 2.75rem)";
+  // 7rem is the page gutters plus the action rail and its gap. That width is
+  // spoken for, so the figure may not use it — on a 412px phone "+103%" set to
+  // 20vw ran clean under the outrage emoji.
+  const fit = (perChar: number) => `calc((100vw - 7rem) / ${length} * ${perChar})`;
+  if (length <= 6) return `min(6rem, ${fit(1.55)})`;
+  if (length <= 10) return `min(4.5rem, ${fit(1.7)})`;
+  if (length <= 16) return `min(3.25rem, ${fit(1.9)})`;
+  return `min(2.5rem, ${fit(2)})`;
 }
 
 function RailButton({
@@ -173,6 +178,10 @@ function FeedCard({
   const following = follow.isFollowing(project.id);
   const figure = heroFigure(project);
   const place = [project.district, project.state].filter(Boolean).join(", ") || "India";
+  const satellite =
+    project.latitude != null && project.longitude != null
+      ? satelliteTileUrl(project.latitude, project.longitude)
+      : null;
 
   return (
     <li className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-ink text-ink-foreground">
@@ -184,19 +193,35 @@ function FeedCard({
           className="absolute inset-0 size-full object-cover"
         />
       ) : (
-        // Flat black under a wall of text reads as a page that failed to load.
-        // A single wash of the status colour, low enough not to shout, gives the
-        // card a temperature before a word of it is read.
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(125% 75% at 50% 0%, ${
-              figure.alarming ? "var(--status-delayed)" : "var(--status-ongoing)"
-            } 0%, transparent 68%)`,
-            opacity: 0.5,
-          }}
-        />
+        <>
+          {/* Nobody has stood in front of this one yet, so the card shows the
+              place from orbit. It is the real patch of ground at the project's
+              own coordinates — never a stock photograph of "a road" — and it is
+              labelled, because it says where a thing is and nothing whatever
+              about whether it was built. The first reader photograph replaces
+              it. */}
+          {satellite ? (
+            <img
+              src={satellite}
+              alt=""
+              loading="lazy"
+              className="absolute inset-0 size-full scale-110 object-cover opacity-45 saturate-50"
+            />
+          ) : null}
+          {/* Flat black under a wall of text reads as a page that failed to
+              load. A wash of the status colour gives the card a temperature
+              before a word of it is read, and holds the imagery down. */}
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(125% 75% at 50% 0%, ${
+                figure.alarming ? "var(--status-delayed)" : "var(--status-ongoing)"
+              } 0%, transparent 68%)`,
+              opacity: satellite ? 0.42 : 0.5,
+            }}
+          />
+        </>
       )}
 
       {/* Enough scrim to keep white text legible over any photograph. */}
@@ -210,26 +235,23 @@ function FeedCard({
         )}
       />
 
-      <div className="relative flex h-full items-end gap-4 px-5 pb-36 pt-[max(3.5rem,env(safe-area-inset-top))] md:px-8 md:pb-20">
+      <div className="relative flex h-full items-end gap-5 px-5 pb-36 pt-[max(3.5rem,env(safe-area-inset-top))] md:px-8 md:pb-20">
         <div className="flex h-full min-w-0 flex-1 flex-col">
           {/* The community line, not a second copy of the figure below it: which
-              place this is, where it sits today, and whether anybody has been. */}
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/75 sm:text-xs">
+              place this is, where it sits today, and whether anybody has been.
+              Separators are spacing, not characters — as glyphs they stranded a
+              dot at the end of every line that wrapped. */}
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-white/75 sm:text-xs">
             <span className="font-semibold text-white">w/{place}</span>
-            <span aria-hidden>·</span>
             <span className="inline-flex items-center gap-1 font-medium">
               <Flame className="size-3.5" aria-hidden />#{rank}
             </span>
             {distanceKm != null ? (
-              <>
-                <span aria-hidden>·</span>
-                <span className="inline-flex items-center gap-1 font-medium">
-                  <MapPin className="size-3.5" aria-hidden />
-                  {formatDistance(distanceKm)} away
-                </span>
-              </>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <MapPin className="size-3.5" aria-hidden />
+                {formatDistance(distanceKm)} away
+              </span>
             ) : null}
-            <span aria-hidden>·</span>
             <span>
               {talk === 0 ? "nobody has been yet" : `${talk} ${talk === 1 ? "post" : "posts"}`}
             </span>
@@ -246,7 +268,7 @@ function FeedCard({
           {/* Bottom-anchored, like a poster: the empty space above is the point,
               and the figure sits directly on top of the name it belongs to
               rather than floating apart from it. */}
-          <div className="flex flex-1 flex-col justify-end pb-5">
+          <div className="flex flex-1 flex-col justify-end overflow-hidden pb-5">
             <p
               data-numeric
               className={cn(
@@ -266,9 +288,15 @@ function FeedCard({
             </Link>
           </h2>
 
-          <p className="mt-2 line-clamp-2 max-w-lg text-sm leading-relaxed text-white/70">
+          <p className="mt-2 line-clamp-2 max-w-lg text-sm leading-relaxed text-white/70 max-[380px]:hidden">
             {project.plain_summary}
           </p>
+
+          {satellite && !photo?.photo_path ? (
+            <p className="mt-2 line-clamp-2 text-[10px] leading-relaxed text-white/45">
+              Satellite view of the site, not a photo of the work · {SATELLITE_CREDIT}
+            </p>
+          ) : null}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
@@ -388,14 +416,13 @@ function PostCard({
         )}
       />
 
-      <div className="relative flex h-full items-end gap-4 px-5 pb-36 pt-[max(3.5rem,env(safe-area-inset-top))] md:px-8 md:pb-20">
+      <div className="relative flex h-full items-end gap-5 px-5 pb-36 pt-[max(3.5rem,env(safe-area-inset-top))] md:px-8 md:pb-20">
         <div className="flex h-full min-w-0 flex-1 flex-col justify-end">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/75 sm:text-xs">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/75 sm:text-xs">
             <span className="rounded-full bg-white/20 px-2 py-0.5 font-semibold text-white">
               Posted by a reader
             </span>
             <span className="font-semibold text-white">{post.handle}</span>
-            <span aria-hidden>·</span>
             <span>{shortAgo(post.created_at)}</span>
             {distanceKm != null ? (
               <span className="inline-flex items-center gap-1 font-medium">

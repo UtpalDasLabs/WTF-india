@@ -10,12 +10,7 @@ import { EvidencePanel } from "@/components/wtf/evidence-panel";
 import { ShareButton } from "@/components/wtf/share-button";
 import { StatusChip, VerificationChip } from "@/components/wtf/status-chip";
 import { VerifiedTimeline } from "@/components/wtf/timeline";
-import {
-  milestonesQuery,
-  postsQuery,
-  projectQuery,
-  sourcesQuery,
-} from "@/lib/queries";
+import { milestonesQuery, postsQuery, projectQuery, sourcesQuery } from "@/lib/queries";
 import { useFollow } from "@/hooks/use-follow";
 import { computeDelay } from "@/lib/delay";
 import { formatBudget, formatDate } from "@/lib/wtf";

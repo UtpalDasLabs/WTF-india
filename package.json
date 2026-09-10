@@ -11,7 +11,7 @@
     "build:android": "node scripts/build-android.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "node --experimental-strip-types scripts/test-photo-exif.mjs",
+    "test": "node --experimental-strip-types scripts/test-photo-exif.mjs && node --experimental-strip-types scripts/test-satellite.mjs",
     "format": "prettier --write ."
   },
   "overrides": {
