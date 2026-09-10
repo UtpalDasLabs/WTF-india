@@ -25,6 +25,12 @@ export type Project = {
   published: boolean;
   source_origin?: "official" | "community";
   community_note?: string | null;
+  /** What the sanction order first said it would cost, and what it says now. */
+  original_cost_inr?: number | null;
+  revised_cost_inr?: number | null;
+  original_end_date?: string | null;
+  revised_end_date?: string | null;
+  time_overrun_months?: number | null;
 };
 
 export type ProjectSource = {
@@ -519,9 +525,7 @@ export const notesQuery = (postIds: string[]) =>
       }
       // A shown note outranks a proposed one; within each, the more helpful wins.
       for (const list of Object.values(byPost)) {
-        list.sort(
-          (a, b) => Number(b.shown) - Number(a.shown) || b.helpful - a.helpful,
-        );
+        list.sort((a, b) => Number(b.shown) - Number(a.shown) || b.helpful - a.helpful);
       }
       return byPost;
     },

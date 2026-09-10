@@ -46,10 +46,17 @@ export function Reactions({
   projectId,
   counts,
   className,
+  /**
+   * `row` is the quiet version that sits in a list. `rail` is the one that runs
+   * down the side of a full-bleed feed card, where the faces are the interface
+   * rather than a footnote — bigger, stacked, and legible over a photograph.
+   */
+  variant = "row",
 }: {
   projectId: string;
   counts: ReactionCounts | undefined;
   className?: string;
+  variant?: "row" | "rail";
 }) {
   const queryClient = useQueryClient();
   const [mine, setMine] = useState<Set<string>>(() =>
@@ -102,6 +109,44 @@ export function Reactions({
     },
     [mine, projectId, react],
   );
+
+  if (variant === "rail") {
+    return (
+      <div className={cn("flex flex-col items-center gap-3", className)}>
+        {FACES.map(({ key, glyph, label }) => {
+          const on = mine.has(`${projectId}:${key}`);
+          const total = Math.max((totals[key] ?? 0) + (pending[key] ?? 0), 0);
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onTap(key)}
+              aria-pressed={on}
+              aria-label={`${label}${total > 0 ? ` — ${total} so far` : ""}`}
+              title={label}
+              className="group flex flex-col items-center gap-0.5"
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "grid size-11 place-items-center rounded-full text-2xl leading-none backdrop-blur-sm transition-all active:scale-90",
+                  on ? "bg-white/85 scale-105" : "bg-black/35",
+                )}
+              >
+                {glyph}
+              </span>
+              <span
+                data-numeric
+                className="text-[11px] font-semibold tabular-nums text-white drop-shadow"
+              >
+                {total > 0 ? total : ""}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex flex-wrap items-center gap-1.5", className)}>

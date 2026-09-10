@@ -35,6 +35,11 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      # The EXIF reader decides which project a photograph belongs to, and gets it
+      # wrong silently rather than loudly, so the site does not ship without it.
+      - name: Check the photo metadata reader
+        run: npm test
+
       # Creates the Pages site if the repo has none. It cannot change an existing
       # site's source: a site left on "Deploy from a branch" serves Jekyll's render
       # of the repo (README.md as the home page) and ignores this workflow's
