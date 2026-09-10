@@ -5,11 +5,18 @@ import { ArrowLeft, Building2, IndianRupee, MapPin, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppShell } from "@/components/wtf/app-shell";
 import { CommunitySection } from "@/components/wtf/community-section";
+import { PostsThread } from "@/components/wtf/posts-sheet";
 import { EvidencePanel } from "@/components/wtf/evidence-panel";
 import { ShareButton } from "@/components/wtf/share-button";
 import { StatusChip, VerificationChip } from "@/components/wtf/status-chip";
 import { VerifiedTimeline } from "@/components/wtf/timeline";
-import { milestonesQuery, projectQuery, reviewsQuery, sourcesQuery } from "@/lib/queries";
+import {
+  milestonesQuery,
+  postsQuery,
+  projectQuery,
+  reviewsQuery,
+  sourcesQuery,
+} from "@/lib/queries";
 import { useFollow } from "@/hooks/use-follow";
 import { computeDelay } from "@/lib/delay";
 import { formatBudget, formatDate } from "@/lib/wtf";
@@ -40,6 +47,7 @@ function ProjectDetail() {
   const sources = useQuery(sourcesQuery(projectId));
   const milestones = useQuery(milestonesQuery(projectId));
   const reviews = useQuery(reviewsQuery(projectId));
+  const posts = useQuery(postsQuery(projectId));
   const follow = useFollow();
 
   if (project.isLoading) {
@@ -82,7 +90,7 @@ function ProjectDetail() {
         to="/"
         className="m3-state -ml-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="size-4" aria-hidden /> All projects
+        <ArrowLeft className="size-4" aria-hidden /> Back to the feed
       </Link>
 
       {/* The verified record leads; community voice sits alongside it on desktop so the
@@ -100,8 +108,8 @@ function ProjectDetail() {
                   w/{[data.district, data.state].filter(Boolean).join(", ") || "India"}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {reviews.data?.length ?? 0} {(reviews.data?.length ?? 0) === 1 ? "post" : "posts"}{" "}
-                  · anyone can add what they see on the ground
+                  {posts.data?.length ?? 0} {(posts.data?.length ?? 0) === 1 ? "post" : "posts"} ·
+                  anyone can add what they see on the ground
                 </p>
               </div>
               <button
@@ -118,6 +126,14 @@ function ProjectDetail() {
                 {follow.isFollowing(data.id) ? "Joined" : "Join"}
               </button>
             </div>
+
+            {data.source_origin === "community" ? (
+              <p className="mt-3 rounded-xl border border-dashed border-outline-variant bg-surface p-3 text-xs leading-relaxed text-muted-foreground">
+                <strong className="font-semibold text-foreground">Added by a reader.</strong> This
+                one came from somebody's photograph, not from a government document. Nothing here
+                has been checked, and no budget or dates are claimed for it.
+              </p>
+            ) : null}
 
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <StatusChip status={data.status} />
@@ -183,7 +199,21 @@ function ProjectDetail() {
           <EvidencePanel sources={sources.data ?? []} loading={sources.isLoading} />
         </div>
 
-        <div className="mt-8 lg:mt-0">
+        <div className="mt-8 space-y-8 lg:mt-0">
+          {/* What readers have said, needing no account, comes first: it is the
+              live half of the page. The star ratings below it are the older,
+              signed-in surface and stay where the moderation queue expects them. */}
+          <section className="rounded-xl border border-border bg-surface">
+            <div className="border-b border-border p-5 pb-3">
+              <h2 className="display-md">On the ground</h2>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Written by readers, not taken from any official record. No account needed;
+                everything goes up straight away and anyone can flag it or add a note.
+              </p>
+            </div>
+            <PostsThread projectId={projectId} />
+          </section>
+
           <CommunitySection projectId={projectId} />
         </div>
       </article>

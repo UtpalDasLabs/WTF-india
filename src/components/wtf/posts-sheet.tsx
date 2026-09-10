@@ -235,22 +235,25 @@ function PostRow({
   );
 }
 
-export function PostsSheet({
+/**
+ * The thread itself, without a container.
+ *
+ * The feed shows it in a sheet over a card; a project's own page shows it inline
+ * under the official record. Same conversation either way, so it is written once
+ * and the two callers decide what it sits in.
+ */
+export function PostsThread({
   projectId,
-  projectName,
-  open,
-  onOpenChange,
+  enabled = true,
 }: {
   projectId: string;
-  projectName: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  enabled?: boolean;
 }) {
   const queryClient = useQueryClient();
   const device = useDeviceId();
-  const posts = useQuery({ ...postsQuery(projectId), enabled: open });
+  const posts = useQuery({ ...postsQuery(projectId), enabled });
   const postIds = useMemo(() => (posts.data ?? []).map((post) => post.id), [posts.data]);
-  const notes = useQuery({ ...notesQuery(postIds), enabled: open && postIds.length > 0 });
+  const notes = useQuery({ ...notesQuery(postIds), enabled: enabled && postIds.length > 0 });
 
   const [draft, setDraft] = useState("");
   const [mine, setMine] = useState<Set<string>>(() =>
@@ -291,110 +294,128 @@ export function PostsSheet({
 
   return (
     <>
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[88dvh]">
-          <DrawerTitle className="px-5 pb-1 pt-2 text-base font-semibold">
-            <span className="line-clamp-1">{projectName}</span>
-          </DrawerTitle>
-          <p className="px-5 pb-3 text-xs leading-relaxed text-muted-foreground">
-            Written by readers, not taken from any official record. Everything here goes up straight
-            away and anyone can flag it or add a note.
-          </p>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-5">
-            {posts.isLoading ? (
-              <div className="grid place-items-center py-12">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
-              </div>
-            ) : (posts.data ?? []).length === 0 ? (
-              <div className="py-10 text-center">
-                <MessageSquare className="mx-auto size-7 text-muted-foreground" aria-hidden />
-                <p className="mt-3 font-semibold">Nobody has said anything yet</p>
-                <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
-                  If you have walked past this, you know more about it than anyone reading.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setCapturing(true)}
-                  className="m3-state mt-4 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"
-                >
-                  Add a photo of it
-                </button>
-              </div>
-            ) : (
-              <ul>
-                {(posts.data ?? []).map((post) => (
-                  <PostRow
-                    key={post.id}
-                    post={post}
-                    notes={notes.data?.[post.id] ?? []}
-                    mine={mine.has(post.id)}
-                    onFlag={() =>
-                      run(async () => {
-                        const total = await flagPost(post.id, device ?? "");
-                        toast.success(
-                          total >= 4
-                            ? "Flagged, and it is now hidden while it is looked at."
-                            : "Flagged. Thanks — a few more and it comes down automatically.",
-                        );
-                      })
-                    }
-                    onDelete={() =>
-                      run(async () => {
-                        await deleteOwnPost(post.id, device ?? "");
-                        rememberMine(post.id, false);
-                        setMine((current) => {
-                          const next = new Set(current);
-                          next.delete(post.id);
-                          return next;
-                        });
-                      })
-                    }
-                    onNote={(body) =>
-                      run(async () => {
-                        await addNote({ postId: post.id, device: device ?? "", body });
-                        toast.success(
-                          "Proposed. It shows publicly once enough readers agree it helps.",
-                        );
-                      })
-                    }
-                    onRateNote={(noteId, helpful) =>
-                      run(() => rateNote(noteId, device ?? "", helpful))
-                    }
-                  />
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="border-t border-border bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="flex items-end gap-2">
-              <Textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder="What do you actually see here?"
-                className="max-h-28 min-h-11 flex-1 resize-none py-2.5 text-sm"
-                maxLength={2000}
-              />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5">
+          {posts.isLoading ? (
+            <div className="grid place-items-center py-12">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
+            </div>
+          ) : (posts.data ?? []).length === 0 ? (
+            <div className="py-10 text-center">
+              <MessageSquare className="mx-auto size-7 text-muted-foreground" aria-hidden />
+              <p className="mt-3 font-semibold">Nobody has said anything yet</p>
+              <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+                If you have walked past this, you know more about it than anyone reading.
+              </p>
               <button
                 type="button"
-                onClick={() => say.mutate(draft.trim())}
-                disabled={draft.trim().length === 0 || say.isPending}
-                aria-label="Post"
-                className="m3-state grid size-11 shrink-0 place-items-center rounded-full bg-foreground text-background disabled:opacity-40"
+                onClick={() => setCapturing(true)}
+                className="m3-state mt-4 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"
               >
-                {say.isPending ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : (
-                  <Send className="size-4" aria-hidden />
-                )}
+                Add a photo of it
               </button>
             </div>
+          ) : (
+            <ul>
+              {(posts.data ?? []).map((post) => (
+                <PostRow
+                  key={post.id}
+                  post={post}
+                  notes={notes.data?.[post.id] ?? []}
+                  mine={mine.has(post.id)}
+                  onFlag={() =>
+                    run(async () => {
+                      const total = await flagPost(post.id, device ?? "");
+                      toast.success(
+                        total >= 4
+                          ? "Flagged, and it is now hidden while it is looked at."
+                          : "Flagged. Thanks — a few more and it comes down automatically.",
+                      );
+                    })
+                  }
+                  onDelete={() =>
+                    run(async () => {
+                      await deleteOwnPost(post.id, device ?? "");
+                      rememberMine(post.id, false);
+                      setMine((current) => {
+                        const next = new Set(current);
+                        next.delete(post.id);
+                        return next;
+                      });
+                    })
+                  }
+                  onNote={(body) =>
+                    run(async () => {
+                      await addNote({ postId: post.id, device: device ?? "", body });
+                      toast.success(
+                        "Proposed. It shows publicly once enough readers agree it helps.",
+                      );
+                    })
+                  }
+                  onRateNote={(noteId, helpful) =>
+                    run(() => rateNote(noteId, device ?? "", helpful))
+                  }
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="border-t border-border bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-end gap-2">
+            <Textarea
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="What do you actually see here?"
+              className="max-h-28 min-h-11 flex-1 resize-none py-2.5 text-sm"
+              maxLength={2000}
+            />
+            <button
+              type="button"
+              onClick={() => say.mutate(draft.trim())}
+              disabled={draft.trim().length === 0 || say.isPending}
+              aria-label="Post"
+              className="m3-state grid size-11 shrink-0 place-items-center rounded-full bg-foreground text-background disabled:opacity-40"
+            >
+              {say.isPending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Send className="size-4" aria-hidden />
+              )}
+            </button>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </div>
+      </div>
 
       <Capture open={capturing} onOpenChange={setCapturing} projectId={projectId} />
     </>
+  );
+}
+
+/** The thread as a sheet, for the feed. */
+export function PostsSheet({
+  projectId,
+  projectName,
+  open,
+  onOpenChange,
+}: {
+  projectId: string;
+  projectName: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[88dvh]">
+        <DrawerTitle className="px-5 pb-1 pt-2 text-base font-semibold">
+          <span className="line-clamp-1">{projectName}</span>
+        </DrawerTitle>
+        <p className="px-5 pb-3 text-xs leading-relaxed text-muted-foreground">
+          Written by readers, not taken from any official record. Everything here goes up straight
+          away and anyone can flag it or add a note.
+        </p>
+        <PostsThread projectId={projectId} enabled={open} />
+      </DrawerContent>
+    </Drawer>
   );
 }
