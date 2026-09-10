@@ -851,3 +851,15 @@ export const myPostIdsQuery = (device: string | null) =>
       );
     },
   });
+
+/**
+ * Attaches this browser's unclaimed posts to the account that just signed in.
+ *
+ * Only rows with no account yet, and only from the device asking, so signing in
+ * can never take over somebody else's posts. Returns how many were adopted.
+ */
+export async function claimPosts(device: string): Promise<number> {
+  const { data, error } = await db.rpc("claim_posts", { _device: device });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
