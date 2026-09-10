@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The app's own ground colour, matching --background in src/styles.css.
+  The app's own ground colour, matching the background token in
+  src/styles.css.
 
   Without this the window is white until the WebView paints, which on a cold
   start is a full white flash before a very dark app. The splash screen and the
