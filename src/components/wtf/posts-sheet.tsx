@@ -21,6 +21,7 @@ import {
   createPost,
   deleteOwnPost,
   flagPost,
+  myPostIdsQuery,
   notesQuery,
   photoUrl,
   postsQuery,
@@ -40,6 +41,14 @@ import { cn } from "@/lib/utils";
  * delete, it is a claim that needs a date attached.
  */
 
+/**
+ * Posts written on this browser before the server has been asked.
+ *
+ * Only a head start: the authority on what is yours is `my_post_ids`, which
+ * knows about photographs taken through the camera and survives a cleared
+ * browser. This exists so the delete button appears the instant you post
+ * rather than one refetch later.
+ */
 const MINE_KEY = "wtf.myposts";
 
 function readMine(): Set<string> {
@@ -57,10 +66,9 @@ function rememberMine(id: string, keep: boolean) {
     const mine = readMine();
     if (keep) mine.add(id);
     else mine.delete(id);
-    // Only the last few hundred matter; this is a convenience, not a record.
     window.localStorage.setItem(MINE_KEY, JSON.stringify([...mine].slice(-500)));
   } catch {
-    // Storage blocked: the delete button just will not appear next visit.
+    // Storage blocked. The server still knows, which is the point.
   }
 }
 
@@ -252,13 +260,17 @@ export function PostsThread({
   const queryClient = useQueryClient();
   const device = useDeviceId();
   const posts = useQuery({ ...postsQuery(projectId), enabled });
+  const myIds = useQuery({ ...myPostIdsQuery(device), enabled: enabled && Boolean(device) });
   const postIds = useMemo(() => (posts.data ?? []).map((post) => post.id), [posts.data]);
   const notes = useQuery({ ...notesQuery(postIds), enabled: enabled && postIds.length > 0 });
 
   const [draft, setDraft] = useState("");
-  const [mine, setMine] = useState<Set<string>>(() =>
+  const [justMine, setJustMine] = useState<Set<string>>(() =>
     typeof window === "undefined" ? new Set() : readMine(),
   );
+  // Whatever the server says is yours, plus anything posted a moment ago that
+  // it has not been asked about yet.
+  const mine = useMemo(() => new Set([...(myIds.data ?? []), ...justMine]), [myIds.data, justMine]);
   const [capturing, setCapturing] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -266,6 +278,7 @@ export function PostsThread({
       queryClient.invalidateQueries({ queryKey: ["posts", projectId] }),
       queryClient.invalidateQueries({ queryKey: ["post-counts"] }),
       queryClient.invalidateQueries({ queryKey: ["notes"] }),
+      queryClient.invalidateQueries({ queryKey: ["my-post-ids"] }),
     ]);
   }, [queryClient, projectId]);
 
@@ -277,7 +290,7 @@ export function PostsThread({
     },
     onSuccess: async (id) => {
       rememberMine(id, true);
-      setMine((current) => new Set(current).add(id));
+      setJustMine((current) => new Set(current).add(id));
       setDraft("");
       await refresh();
     },
@@ -335,13 +348,21 @@ export function PostsThread({
                   }
                   onDelete={() =>
                     run(async () => {
-                      await deleteOwnPost(post.id, device ?? "");
+                      if (!device) throw new Error("This browser has no identity to delete with.");
+                      const gone = await deleteOwnPost(post.id, device);
+                      // The function reports whether a row actually matched. Ignoring
+                      // that is how a delete which did nothing looked exactly like one
+                      // that worked.
+                      if (!gone) {
+                        throw new Error("That post was not written on this device.");
+                      }
                       rememberMine(post.id, false);
-                      setMine((current) => {
+                      setJustMine((current) => {
                         const next = new Set(current);
                         next.delete(post.id);
                         return next;
                       });
+                      toast.success("Deleted.");
                     })
                   }
                   onNote={(body) =>

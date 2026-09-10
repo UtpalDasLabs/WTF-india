@@ -830,3 +830,24 @@ export async function myFollows(device: string): Promise<string[]> {
     typeof row === "string" ? row : row.my_follows,
   );
 }
+
+/**
+ * The posts this device wrote, so the delete button appears wherever it should.
+ *
+ * The app used to keep this list in localStorage, which missed every photograph
+ * taken through the camera and lost everything when the browser was cleared.
+ * The server has always known; it just was not asked.
+ */
+export const myPostIdsQuery = (device: string | null) =>
+  queryOptions({
+    queryKey: ["my-post-ids", device],
+    enabled: Boolean(device),
+    queryFn: async (): Promise<string[]> => {
+      if (!device) return [];
+      const { data, error } = await db.rpc("my_post_ids", { _device: device });
+      if (error) throw new Error(error.message);
+      return ((data ?? []) as Array<string | { my_post_ids: string }>).map((row) =>
+        typeof row === "string" ? row : row.my_post_ids,
+      );
+    },
+  });

@@ -39,6 +39,21 @@ const SURE_KM = 0.6;
 const MAYBE_KM = 2.5;
 
 const WARNED_KEY = "wtf.warned";
+const MINE_KEY = "wtf.myposts";
+
+/** Shared with the thread, so a photo can be deleted the moment it is posted. */
+function rememberMyPost(id: string) {
+  try {
+    const raw = window.localStorage.getItem(MINE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    const list = Array.isArray(parsed) ? parsed.filter((k) => typeof k === "string") : [];
+    if (!list.includes(id)) {
+      window.localStorage.setItem(MINE_KEY, JSON.stringify([...list, id].slice(-500)));
+    }
+  } catch {
+    // Storage blocked. The server still knows who wrote it.
+  }
+}
 
 type Stage =
   | { step: "warn" }
@@ -278,7 +293,7 @@ export function Capture({
       if (!target) throw new Error("We could not work out which project this belongs to.");
 
       const path = await uploadPhoto(target, stage.photo);
-      await createPost({
+      const postId = await createPost({
         projectId: target,
         kind: "photo",
         device,
@@ -289,10 +304,17 @@ export function Capture({
         takenAt: stage.takenAt,
       });
 
+      // A photograph is a post like any other, and it was never being written
+      // to the list the delete button reads — so the one thing somebody is
+      // most likely to want to take back was the one thing they could not.
+      // The server list is the real answer; this is the head start.
+      rememberMyPost(postId);
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["posts", target] }),
         queryClient.invalidateQueries({ queryKey: ["post-counts"] }),
         queryClient.invalidateQueries({ queryKey: ["recent-posts"] }),
+        queryClient.invalidateQueries({ queryKey: ["my-post-ids"] }),
         needsName ? queryClient.invalidateQueries({ queryKey: ["projects"] }) : null,
       ]);
 
