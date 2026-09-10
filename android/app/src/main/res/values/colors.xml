@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app's own ground colour, matching --background in src/styles.css.
+
+  Without this the window is white until the WebView paints, which on a cold
+  start is a full white flash before a very dark app. The splash screen and the
+  status bar use the same value so the seam does not show.
+-->
+<resources>
+    <color name="wtfBackground">#101219</color>
+    <color name="wtfInk">#0A0C12</color>
+</resources>

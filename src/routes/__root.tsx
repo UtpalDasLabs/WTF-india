@@ -117,7 +117,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // One theme, and it is the dark one. The feed is a stack of full-bleed cards
+    // on ink; a light shell around it made the app read as two products stitched
+    // together. `dark` is set here rather than toggled, so there is no flash of
+    // the wrong palette before hydration.
+    <html lang="en" className="dark">
       <head>
         <HeadContent />
       </head>

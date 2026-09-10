@@ -1,7 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Loader2, LocateFixed, Newspaper, ScrollText } from "lucide-react";
+import {
+  ChevronDown,
+  ExternalLink,
+  Loader2,
+  LocateFixed,
+  Newspaper,
+  ScrollText,
+} from "lucide-react";
 
 import { AppShell } from "@/components/wtf/app-shell";
 import { useLocation } from "@/hooks/use-location";
@@ -87,6 +94,77 @@ function Story({ item, distanceKm }: { item: NewsItem; distanceKm: number | null
   );
 }
 
+const BANNER_KEY = "wtf.constitutionbanner";
+
+/**
+ * The Constitution, kept in view rather than filed at the bottom.
+ *
+ * It used to be a card under the headlines, which meant almost nobody reached
+ * it. On a page about what is being done with public money, the document that
+ * says on whose behalf belongs above the fold and stays there while you scroll.
+ * Collapsible, because a banner that cannot be got rid of is an advertisement.
+ */
+function ConstitutionBanner() {
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    try {
+      setOpen(window.localStorage.getItem(BANNER_KEY) !== "collapsed");
+    } catch {
+      // Storage blocked: it simply opens each time.
+    }
+  }, []);
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try {
+      window.localStorage.setItem(BANNER_KEY, next ? "open" : "collapsed");
+    } catch {
+      // Ignored.
+    }
+  };
+
+  return (
+    <div className="sticky top-16 z-20 -mx-4 mb-4 px-4 md:-mx-6 md:px-6">
+      <div className="overflow-hidden rounded-2xl border border-ink-line bg-ink text-ink-foreground shadow-e2">
+        <div className="flex items-center gap-3 p-3.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ink-foreground/10">
+            <ScrollText className="size-4" aria-hidden />
+          </span>
+          <p className="min-w-0 flex-1 text-sm font-semibold">The Constitution of India</p>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={open}
+            aria-controls="constitution-banner-body"
+            className="m3-state grid size-8 shrink-0 place-items-center rounded-full text-ink-muted hover:bg-ink-foreground/10"
+          >
+            <ChevronDown
+              className={cn("size-4 transition-transform", open && "rotate-180")}
+              aria-hidden
+            />
+            <span className="sr-only">{open ? "Collapse" : "Expand"}</span>
+          </button>
+        </div>
+
+        <div id="constitution-banner-body" hidden={!open} className="px-3.5 pb-3.5">
+          <p className="text-xs leading-relaxed text-ink-muted">
+            The document all of this is supposed to answer to. Read the Preamble and the articles
+            that bear on public money, in the languages an official text exists for.
+          </p>
+          <Link
+            to="/constitution"
+            className="m3-state mt-3 inline-flex items-center gap-1.5 rounded-full bg-ink-foreground px-3.5 py-2 text-xs font-semibold text-ink hover:opacity-90"
+          >
+            Read it
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function News() {
   const news = useQuery(newsQuery());
   const location = useLocation();
@@ -157,6 +235,8 @@ function News() {
         </p>
       </section>
 
+      <ConstitutionBanner />
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         {here ? (
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -220,29 +300,6 @@ function News() {
           ))}
         </ul>
       )}
-
-      {/* The Constitution used to be a tab of its own and had no way in from a
-          phone at all. It belongs next to the reporting: one is what is being
-          done with the money, the other is the document that says on whose
-          behalf. */}
-      <Link
-        to="/constitution"
-        className={cn(
-          "m3-state mt-8 flex items-center gap-4 rounded-2xl border border-border bg-surface p-5",
-          "hover:bg-surface-container-high",
-        )}
-      >
-        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-container-highest">
-          <ScrollText className="size-5" aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">The Constitution of India</span>
-          <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
-            The document all of this is supposed to answer to, in the languages an official text
-            exists for.
-          </span>
-        </span>
-      </Link>
 
       <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
         Headlines are gathered from public news feeds four times a day and shown with their

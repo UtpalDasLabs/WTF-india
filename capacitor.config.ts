@@ -10,6 +10,10 @@ const config: CapacitorConfig = {
     // Supabase is HTTPS-only; refusing cleartext keeps an http:// endpoint from
     // being introduced by accident.
     allowMixedContent: false,
+    // Matches --background in src/styles.css and wtfBackground in the Android
+    // theme, so there is no white frame between the WebView and the window
+    // behind it while a page is still painting.
+    backgroundColor: "#101219",
   },
 };
 

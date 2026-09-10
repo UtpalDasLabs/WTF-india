@@ -15,8 +15,12 @@ import { useCallback, useEffect, useState } from "react";
  */
 const STORAGE_KEY = "wtf.onboarded";
 
-/** 1: pick-your-city welcome. 2: location request and radar scan. */
-const VERSION = 2;
+/**
+ * 1: pick-your-city welcome.
+ * 2: location request and radar scan.
+ * 3: the Preamble, read and sworn to, before the scan.
+ */
+const VERSION = 3;
 
 export function useOnboarding() {
   // Undefined until we have read storage, so nothing flashes on first paint.

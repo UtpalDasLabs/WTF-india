@@ -214,6 +214,13 @@
     border-color: var(--color-border);
   }
 
+  html {
+    /* Tells the browser to render its own furniture dark too: scrollbars, form
+       controls, the flash of background before the stylesheet lands. Without it
+       a dark page still gets white scrollbars and grey select menus. */
+    color-scheme: dark;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -337,4 +344,36 @@
   letter-spacing: 0.05em;
   font-weight: 600;
   text-transform: uppercase;
+}
+
+/*
+ * Leaflet ships its own light chrome — a white zoom box and a white attribution
+ * strip — which sit on the map as two bright rectangles once everything around
+ * them is ink. The map data is themed; its furniture has to be too.
+ */
+.leaflet-container {
+  background: var(--color-surface-container);
+  font-family: var(--font-sans);
+}
+
+.leaflet-bar,
+.leaflet-bar a,
+.leaflet-control-attribution {
+  background: color-mix(in oklab, var(--color-surface) 88%, transparent);
+  color: var(--color-foreground);
+  border-color: var(--color-outline-variant);
+}
+
+.leaflet-bar a:hover {
+  background: var(--color-surface-container-high);
+  color: var(--color-foreground);
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background: var(--color-surface-container);
+  color: var(--color-muted-foreground);
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-muted-foreground);
 }

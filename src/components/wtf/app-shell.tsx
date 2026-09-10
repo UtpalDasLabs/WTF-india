@@ -4,7 +4,7 @@ import { Map as MapIcon, Newspaper, ShieldCheck, Flame, UserRound } from "lucide
 
 import { WtfLogo } from "@/components/wtf/logo";
 import { CameraButton, Capture } from "@/components/wtf/capture";
-import { ApkDownloadLink } from "@/components/wtf/apk-download";
+import { ApkDownloadLink, ApkInstallPrompt } from "@/components/wtf/apk-download";
 import { useSession } from "@/hooks/use-session";
 import { BUILD_COMMIT, BUILD_TIME, REPO_COMMIT_URL } from "@/lib/build-info";
 import { cn } from "@/lib/utils";
@@ -180,6 +180,10 @@ export function AppShell({
       </nav>
 
       <Capture open={capturing} onOpenChange={setCapturing} />
+
+      {/* Asks once, late, and takes no for an answer. Mounted in the shell so it
+          reaches every page rather than only the one that used to carry a card. */}
+      <ApkInstallPrompt />
 
       {immersive ? null : (
         <p className="px-4 pb-2 text-center text-[10px] text-muted-foreground md:hidden">

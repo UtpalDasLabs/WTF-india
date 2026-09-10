@@ -5,6 +5,7 @@ import { Loader2, MapPin, X } from "lucide-react";
 
 import { AppShell } from "@/components/wtf/app-shell";
 import { Feed, type FeedItem } from "@/components/wtf/feed";
+import { Oath } from "@/components/wtf/oath";
 import { Radar } from "@/components/wtf/radar";
 import { useLocation } from "@/hooks/use-location";
 import { useOnboarding } from "@/hooks/use-onboarding";
@@ -50,6 +51,7 @@ function Home() {
   const onboarding = useOnboarding();
 
   const [wideOpen, setWideOpen] = useState(false);
+  const [sworn, setSworn] = useState(false);
   const [scanned, setScanned] = useState(false);
   // Where to start somebody who declines location. Fixed on mount so the answer
   // cannot change under them while the radar is running.
@@ -68,11 +70,15 @@ function Home() {
   // about where you are and opens in Kochi.
   useEffect(() => {
     if (onboarding.done === undefined || askedRef.current) return;
+    // Not while the Preamble is still on screen. A permission prompt over the
+    // oath would be the app asking where you live before it has said what it
+    // is for, which is precisely how you get a refusal.
+    if (onboarding.done === false && !sworn) return;
     askedRef.current = true;
     if (location.state.status === "idle") location.request();
-    // location.request is stable; onboarding.done is the real trigger.
+    // location.request is stable; the two flags are the real trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onboarding.done]);
+  }, [onboarding.done, sworn]);
 
   const published = useMemo(
     () => (projects.data ?? []).filter((project) => project.published),
@@ -204,8 +210,16 @@ function Home() {
   const projectCount = items.filter((item) => item.kind === "project").length;
   const postCount = items.filter((item) => item.kind === "post").length;
 
-  // First run: scan, then hand over to a feed about where you are rather than
-  // about the whole country.
+  // First run: read the Preamble, then scan, then the feed.
+  //
+  // The oath comes before the radar rather than after it, because the radar is
+  // already asking for your location — and being asked for that by an app whose
+  // purpose you have not yet been told is exactly the thing that makes people
+  // say no.
+  if (onboarding.done === false && !sworn) {
+    return <Oath onTake={() => setSworn(true)} />;
+  }
+
   if (onboarding.done === false && !scanned) {
     const declined = location.state.status === "denied" || location.state.status === "unavailable";
     const origin =

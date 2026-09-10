@@ -16,10 +16,20 @@ import { cn } from "@/lib/utils";
  */
 type LeafletApi = typeof import("leaflet");
 
-const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-/** Required by the ODbL licence for OpenStreetMap tiles. Do not drop this. */
+/**
+ * A dark drawn basemap, because the app around it is dark.
+ *
+ * OpenStreetMap's own tiles are white, and a white rectangle in the middle of an
+ * ink page is a hole rather than a map — it glares at night, which is when most
+ * people are looking at their phone. CARTO renders the same OpenStreetMap data
+ * dark, so the data underneath is unchanged and the credit still goes where it
+ * is owed.
+ */
+const OSM_TILE_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+/** Required by the ODbL licence for OpenStreetMap data, and by CARTO for the rendering. */
 const OSM_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+  '&copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 /**
  * Aerial imagery, for when the reader has zoomed in far enough that a drawn map
@@ -206,6 +216,7 @@ export function MapCanvas({
       attribution: OSM_ATTRIBUTION,
       maxZoom: 18,
       detectRetina: true,
+      subdomains: "abcd",
     });
     const imagery = api.tileLayer(SATELLITE_TILE_URL, {
       attribution: SATELLITE_ATTRIBUTION,
