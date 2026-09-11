@@ -229,7 +229,10 @@ function FeedCard({
   return (
     <li
       onPointerUp={tap.onPointerUp}
-      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-ink text-ink-foreground"
+      // touch-manipulation is what makes the double tap work on iOS: without it
+      // Safari and WKWebView treat two quick taps as zoom-to-fit, so the card
+      // jumps and the reaction fires at the same time.
+      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always touch-manipulation overflow-hidden bg-ink text-ink-foreground"
     >
       {photo?.photo_path ? (
         <img
@@ -281,7 +284,10 @@ function FeedCard({
         )}
       />
 
-      <div className="relative flex h-full items-end gap-5 px-5 pb-36 pt-[max(3.5rem,env(safe-area-inset-top))] md:px-8 md:pb-20">
+      {/* calc rather than max: the floating radius pill above is itself pushed
+          down by the inset, so on a notched phone max() resolves both to the
+          same number and the pill lands straight on this card's meta row. */}
+      <div className="relative flex h-full items-end gap-5 px-5 pb-36 pt-[calc(3.5rem+env(safe-area-inset-top))] md:px-8 md:pb-20">
         <div className="flex h-full min-w-0 flex-1 flex-col">
           {/* The community line, not a second copy of the figure below it: which
               place this is, where it sits today, and whether anybody has been.
@@ -461,7 +467,10 @@ function PostCard({
   return (
     <li
       onPointerUp={project ? tap.onPointerUp : undefined}
-      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-ink text-ink-foreground"
+      // touch-manipulation is what makes the double tap work on iOS: without it
+      // Safari and WKWebView treat two quick taps as zoom-to-fit, so the card
+      // jumps and the reaction fires at the same time.
+      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always touch-manipulation overflow-hidden bg-ink text-ink-foreground"
     >
       {post.photo_path ? (
         <img
@@ -492,7 +501,10 @@ function PostCard({
         )}
       />
 
-      <div className="relative flex h-full items-end gap-5 px-5 pb-36 pt-[max(3.5rem,env(safe-area-inset-top))] md:px-8 md:pb-20">
+      {/* calc rather than max: the floating radius pill above is itself pushed
+          down by the inset, so on a notched phone max() resolves both to the
+          same number and the pill lands straight on this card's meta row. */}
+      <div className="relative flex h-full items-end gap-5 px-5 pb-36 pt-[calc(3.5rem+env(safe-area-inset-top))] md:px-8 md:pb-20">
         <div className="flex h-full min-w-0 flex-1 flex-col justify-end">
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/75 sm:text-xs">
             <span className="rounded-full bg-white/20 px-2 py-0.5 font-semibold text-white">

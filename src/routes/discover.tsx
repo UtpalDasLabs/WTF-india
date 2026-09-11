@@ -6,7 +6,7 @@ import { Flame, LocateFixed, Search, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppShell } from "@/components/wtf/app-shell";
-import { ApkDownloadCard } from "@/components/wtf/apk-download";
+import { InstallCard } from "@/components/wtf/install-app";
 import { MapCanvas } from "@/components/wtf/map-canvas";
 import { ProjectCard } from "@/components/wtf/project-card";
 import { useFollow } from "@/hooks/use-follow";
@@ -491,7 +491,7 @@ function Discover() {
 
       <div className="mt-6">{listNode}</div>
 
-      <ApkDownloadCard className="mt-10" />
+      <InstallCard className="mt-10" />
 
       <p className="mt-6 text-xs leading-relaxed text-muted-foreground md:hidden">
         Facts and timelines come from official sources and are checked by a reviewer. Ratings,

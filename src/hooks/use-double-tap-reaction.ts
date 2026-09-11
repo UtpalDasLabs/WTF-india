@@ -19,6 +19,9 @@ import { toggleReaction, type Reaction } from "@/lib/queries";
  * `dblclick` is not used: on a phone it arrives late, after the browser has
  * spent 300ms deciding whether you meant to zoom, and it does not fire at all
  * on some Android WebViews.
+ *
+ * The card this is attached to needs `touch-manipulation`, or iOS zooms on the
+ * second tap while this fires — see the feed card in feed.tsx.
  */
 
 const WINDOW_MS = 320;

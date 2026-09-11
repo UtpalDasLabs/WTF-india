@@ -16,7 +16,7 @@ import { useOAuthDeepLink } from "@/hooks/use-oauth-deeplink";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
@@ -44,7 +44,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
@@ -88,9 +88,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "We the Future shows government projects around you in India, with official sources behind every fact and community reviews kept separate.",
       },
-      { name: "theme-color", content: "#4c4ecf" },
+      // The app is dark everywhere now, and this is the colour the browser
+      // paints its own chrome — and the one iOS uses behind a home-screen
+      // launch. Left on the old indigo it was a bright band above a dark app.
+      { name: "theme-color", content: "#101219" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "We the Future" },
+      // Full-bleed under the status bar, matching the native iOS build, which
+      // runs with contentInset "never" for the same reason. Everything pinned
+      // to the top pads itself with env(safe-area-inset-top).
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { property: "og:title", content: "We the Future" },
       {
         property: "og:description",

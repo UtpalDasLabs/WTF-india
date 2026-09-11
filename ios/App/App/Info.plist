@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CAPACITOR_DEBUG</key>
+	<string>$(CAPACITOR_DEBUG)</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>We the Future</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+
+	<!-- Google sign-in happens in a SFSafariViewController, because Google
+	     refuses OAuth inside an embedded web view. This is what brings the
+	     redirect back into the app: Supabase sends the browser to
+	     in.wethefuture.wtf://auth/callback?code=... and iOS hands that URL to
+	     the app, where useOAuthDeepLink exchanges the code for a session. The
+	     scheme is the bundle id, matching Capacitor's custom_url_scheme and the
+	     Android intent-filter in AndroidManifest.xml. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>in.wethefuture.wtf</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>in.wethefuture.wtf</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- iOS shows these verbatim in the permission prompt, and terminates the
+	     app outright if it asks for something whose string is missing. All
+	     three are reached from the report flow: the camera and the library from
+	     the two file inputs in capture.tsx, and location both there and for the
+	     "projects near you" feed. -->
+	<key>NSCameraUsageDescription</key>
+	<string>To photograph a public project so other people can see its actual condition. The photo's own location is read to match it to the right project, then removed before it is uploaded.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>To report a project using a photograph you have already taken. Its location is read to match it to the right project, then removed before it is uploaded.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>To show the government projects and the public spending news around you. Your location stays on the device; anything you post is rounded to about 100 metres.</string>
+
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+
+	<!-- Capacitor's template ships armv7, which is 32-bit and has not been a
+	     supported iOS architecture for years. App Store validation rejects it. -->
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+
+	<!-- The feed is a full-height vertical swipe and the manifest already
+	     declares "orientation": "portrait" for the web app. Landscape on a phone
+	     would letterbox it for no gain. An iPad has the room, so it keeps all
+	     four. -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
+	<!-- The app is dark everywhere, the same decision as AppTheme on Android.
+	     Without UIUserInterfaceStyle the web view renders light-mode form
+	     controls and scrollbars on a phone set to light. The status bar is set
+	     here rather than per view controller so the clock and battery stay
+	     legible on the dark ground from the first frame. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+</dict>
+</plist>

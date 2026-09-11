@@ -5,4 +5,5 @@ dist
 pnpm-lock.yaml
 package-lock.json
 android
+ios
 routeTree.gen.ts

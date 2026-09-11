@@ -4,7 +4,7 @@ import { Map as MapIcon, Newspaper, ShieldCheck, Flame, UserRound } from "lucide
 
 import { WtfLogo } from "@/components/wtf/logo";
 import { CameraButton, Capture } from "@/components/wtf/capture";
-import { ApkDownloadLink, ApkInstallPrompt } from "@/components/wtf/apk-download";
+import { InstallLink, InstallPrompt } from "@/components/wtf/install-app";
 import { useSession } from "@/hooks/use-session";
 import { BUILD_COMMIT, BUILD_TIME, REPO_COMMIT_URL } from "@/lib/build-info";
 import { cn } from "@/lib/utils";
@@ -60,7 +60,16 @@ export function AppShell({
     <div
       className={cn(
         "relative flex flex-col bg-background",
-        immersive ? "h-[100dvh] overflow-hidden" : "min-h-screen pb-20 md:pb-0",
+        // dvh rather than vh: on iOS Safari, 100vh is the height with the URL
+        // bar hidden, so a min-h-screen page is taller than the window on
+        // arrival and the whole layout shifts the first time you scroll.
+        immersive
+          ? "h-[100dvh] overflow-hidden"
+          : // The bottom nav is 5rem of chrome plus whatever the home indicator
+            // needs, and it pads itself by that inset. This has to clear both or
+            // the last line of every page is read through the nav bar — which is
+            // exactly what happens on a notched iPhone, where the inset is 34px.
+            "min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0",
       )}
     >
       {/* The same wash the feed cards have, so a page and a card feel like the
@@ -81,6 +90,10 @@ export function AppShell({
       <header
         className={cn(
           "sticky top-0 z-30 border-b border-border bg-background/70 backdrop-blur-xl",
+          // The iOS app and an iPhone home-screen install both run full-bleed
+          // under the status bar, so without this the logo row sits beneath the
+          // clock. The blur extends up behind it rather than leaving a band.
+          "pt-[env(safe-area-inset-top)]",
           immersive && "hidden md:block",
         )}
       >
@@ -113,7 +126,7 @@ export function AppShell({
                 ) : null}
               </Link>
             ))}
-            <ApkDownloadLink className="ml-2" />
+            <InstallLink className="ml-2" />
             <CameraButton onClick={() => setCapturing(true)} className="ml-2 size-10" />
           </nav>
         </div>
@@ -156,7 +169,7 @@ export function AppShell({
               · {BUILD_TIME}
             </p>
           </div>
-          <ApkDownloadLink variant="quiet" />
+          <InstallLink variant="quiet" />
         </div>
       </footer>
 
@@ -203,7 +216,7 @@ export function AppShell({
 
       {/* Asks once, late, and takes no for an answer. Mounted in the shell so it
           reaches every page rather than only the one that used to carry a card. */}
-      <ApkInstallPrompt />
+      <InstallPrompt />
 
       {immersive ? null : (
         <p className="px-4 pb-2 text-center text-[10px] text-muted-foreground md:hidden">

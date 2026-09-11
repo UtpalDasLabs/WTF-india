@@ -1,0 +1,204 @@
+name: Build iOS app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Always runs, needs no Apple account, and is the proof the app actually
+  # compiles. A simulator build is never code signed, so it cannot be installed
+  # on a phone — see the ipa job below for that.
+  simulator:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm ci is deliberately not used here, for the same reason as the Android
+      # workflow: ajv is an optional peer dependency of @hookform/resolvers, and
+      # npm writes a lockfile for it that its own `npm ci` ideal-tree check then
+      # rejects. `npm install` still installs from the committed lockfile.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Builds the SPA rooted at "/" and copies it into ios/App/App/public,
+      # which is gitignored, so this step is what puts the web app inside the
+      # .app. Capacitor 8 resolves the native plugins through Swift Package
+      # Manager, so there is no CocoaPods step.
+      - name: Build web bundle and sync to iOS
+        run: npm run build:ios
+
+      - name: Show the toolchain
+        run: xcodebuild -version && xcodebuild -project ios/App/App.xcodeproj -list
+
+      - name: Build for the simulator
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      # Checks the things that are wrong silently rather than loudly: a missing
+      # usage string terminates the app the first time it asks for the camera,
+      # and a missing URL scheme leaves Google sign-in hanging in Safari with
+      # nowhere to return to. Both only show up on a device, so they are
+      # asserted against the Info.plist that was actually built into the app.
+      - name: Check the built app carries its permissions and URL scheme
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          test -d "$APP" || { echo "::error::no App.app was produced"; exit 1; }
+          test -f "$APP/public/index.html" || { echo "::error::the web bundle is missing from the app"; exit 1; }
+          for key in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSLocationWhenInUseUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Print :$key" "$APP/Info.plist" >/dev/null \
+              || { echo "::error::$key is missing from the built Info.plist"; exit 1; }
+          done
+          scheme=$(/usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$APP/Info.plist")
+          [ "$scheme" = "in.wethefuture.wtf" ] \
+            || { echo "::error::OAuth URL scheme is '$scheme', expected in.wethefuture.wtf"; exit 1; }
+          echo "App.app carries its three usage strings, the $scheme scheme and the web bundle."
+
+      - name: Package the simulator app
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app" \
+            "artifacts/we-the-future-simulator-${GITHUB_SHA:0:7}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: we-the-future-simulator-app
+          path: artifacts/*.zip
+          if-no-files-found: error
+
+  # An installable build needs a paid Apple Developer account: Apple will not
+  # issue a distribution certificate or a provisioning profile without one, and
+  # an unsigned .app cannot be installed on any iPhone. Set the four secrets
+  # below to turn this on; without them the job is skipped and the simulator
+  # build above is still produced.
+  #
+  #   APPLE_CERTIFICATE_P12       base64 of an "Apple Distribution" .p12 export
+  #   APPLE_CERTIFICATE_PASSWORD  the password used for that export
+  #   APPLE_PROVISIONING_PROFILE  base64 of the .mobileprovision for in.wethefuture.wtf
+  #   APPLE_TEAM_ID               the ten-character team id
+  ipa:
+    runs-on: macos-15
+    needs: simulator
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for signing secrets
+        id: signing
+        env:
+          CERT: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+        run: |
+          if [ -n "$CERT" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No APPLE_CERTIFICATE_P12 secret set, so no installable build was produced. An iOS app cannot be signed without a paid Apple Developer account."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.signing.outputs.available == 'true'
+        run: npm install --no-audit --no-fund
+
+      - name: Build web bundle and sync to iOS
+        if: steps.signing.outputs.available == 'true'
+        run: npm run build:ios
+
+      # A throwaway keychain, unlocked for this job only, so the certificate
+      # never touches the runner's login keychain or outlives the run.
+      - name: Load the signing certificate and profile
+        if: steps.signing.outputs.available == 'true'
+        env:
+          CERT_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          PASSPHRASE=$(uuidgen)
+          security create-keychain -p "$PASSPHRASE" "$KEYCHAIN"
+          security set-keychain-settings -lut 900 "$KEYCHAIN"
+          security unlock-keychain -p "$PASSPHRASE" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+          echo "$CERT_P12" | base64 -d > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN" \
+            -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$PASSPHRASE" "$KEYCHAIN" >/dev/null
+          rm -f "$RUNNER_TEMP/certificate.p12"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$PROFILE" | base64 -d \
+            > "$HOME/Library/MobileDevice/Provisioning Profiles/build.mobileprovision"
+
+      - name: Archive and export an IPA
+        if: steps.signing.outputs.available == 'true'
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            archive
+
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>destination</key><string>export</string>
+            <key>signingStyle</key><string>manual</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          name: we-the-future-ipa
+          path: ${{ runner.temp }}/export/*.ipa
+          if-no-files-found: error
+
+      - name: Remove the signing keychain
+        if: always() && steps.signing.outputs.available == 'true'
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/build.mobileprovision"
