@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Camera, ChevronUp, Flame, MapPin, MessageCircle, Share2, Users } from "lucide-react";
 
-import { Capture } from "@/components/wtf/capture";
-import { PostsSheet } from "@/components/wtf/posts-sheet";
+import { Capture } from "@/components/wtf/capture-lazy";
+import { PostsSheet } from "@/components/wtf/posts-sheet-lazy";
 import { DOUBLE_TAP_REACTION, Reactions } from "@/components/wtf/reactions";
 import { useDoubleTapReaction } from "@/hooks/use-double-tap-reaction";
 import { useFollow } from "@/hooks/use-follow";
@@ -39,6 +39,9 @@ import { cn } from "@/lib/utils";
 
 /** How many cards exist at once. Grows as you get near the end. */
 const PAGE = 10;
+
+/** How many cards either side of the one on screen stay mounted. */
+const WINDOW = 2;
 
 type Card = { project: Project; heat: Heat };
 
@@ -164,14 +167,25 @@ function RailButton({
       className="flex flex-col items-center gap-0.5"
     >
       <span
+        // No backdrop-blur here. There are seven of these on every card, and a
+        // backdrop filter is a composited surface that re-reads whatever is
+        // behind it on every frame of a scroll — 93 of them on a fresh feed,
+        // 453 once you have swiped through forty. Over a dark photo under a
+        // dark scrim the blur was invisible anyway; a slightly heavier
+        // background does the same work for nothing.
         className={cn(
-          "grid size-11 place-items-center rounded-full backdrop-blur-sm transition-all active:scale-90",
-          active ? "bg-white/85 text-black" : "bg-black/35 text-white",
+          "grid size-11 place-items-center rounded-full transition-all active:scale-90",
+          active ? "bg-white/85 text-black" : "bg-black/45 text-white",
         )}
       >
         {children}
       </span>
-      <span data-numeric className="text-[11px] font-semibold tabular-nums text-white drop-shadow">
+      {/* text-shadow rather than drop-shadow: the same look, but a filter is a
+          composited layer and a text shadow is painted with the glyphs. */}
+      <span
+        data-numeric
+        className="text-shadow-ink text-[11px] font-semibold tabular-nums text-white"
+      >
         {count && count > 0 ? count : ""}
       </span>
     </button>
@@ -365,8 +379,8 @@ function FeedCard({
                   : `Follow this. ${shownFollowers} watching`
               }
               className={cn(
-                "m3-state inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold backdrop-blur-sm",
-                following ? "bg-white/20 text-white" : "bg-white text-black",
+                "m3-state inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold",
+                following ? "bg-white/25 text-white" : "bg-white text-black",
               )}
             >
               <Users className="size-3.5" aria-hidden />
@@ -386,7 +400,7 @@ function FeedCard({
             <Link
               to="/projects/$projectId"
               params={{ projectId: project.id }}
-              className="m3-state inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-sm"
+              className="m3-state inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-2 text-xs font-semibold text-white"
             >
               See the paper trail
             </Link>
@@ -561,8 +575,8 @@ function PostCard({
                 onClick={() => follow.toggle(project.id)}
                 aria-pressed={following}
                 className={cn(
-                  "m3-state inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold backdrop-blur-sm",
-                  following ? "bg-white/20 text-white" : "bg-black/35 text-white",
+                  "m3-state inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold",
+                  following ? "bg-white/25 text-white" : "bg-black/45 text-white",
                 )}
               >
                 <Users className="size-3.5" aria-hidden />
@@ -645,7 +659,29 @@ export function Feed({
         className="h-[100dvh] snap-y snap-mandatory overflow-y-auto overscroll-contain"
         aria-label="Projects and posts, most talked about first"
       >
-        {shown.map((item) => {
+        {shown.map((item, index) => {
+          // Rank is counted before the window check, or the numbers would
+          // change as cards mount and unmount underneath you.
+          const thisRank = item.kind === "post" ? 0 : (rank += 1);
+
+          // Only the card you are on and its immediate neighbours are real.
+          //
+          // Every card is a full-screen image, a gradient, a scrim and a rail
+          // of seven buttons, and nothing here ever unmounted: forty swipes
+          // left fifty of them in the document at once, and the feed got
+          // slower the longer you used it. The placeholder is the same height
+          // and carries the same snap point, so scrolling arithmetic and the
+          // scrollbar are unchanged — it simply has nothing in it.
+          if (Math.abs(index - active) > WINDOW) {
+            return (
+              <li
+                key={item.key}
+                aria-hidden
+                className="h-[100dvh] w-full shrink-0 snap-start snap-always bg-ink"
+              />
+            );
+          }
+
           if (item.kind === "post") {
             return (
               <PostCard
@@ -663,12 +699,11 @@ export function Feed({
               />
             );
           }
-          rank += 1;
           return (
             <FeedCard
               key={item.key}
               card={item.card}
-              rank={rank}
+              rank={thisRank}
               photo={photos[item.card.project.id]}
               talk={counts[item.card.project.id]?.total ?? 0}
               reactions={reactions}

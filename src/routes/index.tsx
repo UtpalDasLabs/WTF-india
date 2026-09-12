@@ -279,7 +279,7 @@ function Home() {
               out of it. Anything more would be a masthead. */}
           <div className="pointer-events-none fixed inset-x-0 top-0 z-20 flex justify-center px-4 pt-[max(0.75rem,env(safe-area-inset-top))] md:top-16">
             {scope ? (
-              <span className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/45 py-1.5 pl-3.5 pr-1.5 text-xs font-medium text-white backdrop-blur-sm">
+              <span className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/70 py-1.5 pl-3.5 pr-1.5 text-xs font-medium text-white">
                 <MapPin className="size-3.5" aria-hidden />
                 {projectCount} within {formatDistance(scope.reachKm)}
                 {here?.precise
@@ -296,7 +296,7 @@ function Home() {
                 </button>
               </span>
             ) : (
-              <span className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/45 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+              <span className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/70 px-3.5 py-1.5 text-xs font-medium text-white">
                 {projectCount.toLocaleString("en-IN")} projects across India
                 {here ? (
                   <button

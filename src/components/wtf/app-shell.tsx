@@ -1,9 +1,10 @@
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Map as MapIcon, Newspaper, ShieldCheck, Flame, UserRound } from "lucide-react";
 
 import { WtfLogo } from "@/components/wtf/logo";
-import { CameraButton, Capture } from "@/components/wtf/capture";
+import { CameraButton } from "@/components/wtf/camera-button";
+import { Capture } from "@/components/wtf/capture-lazy";
 import { InstallLink, InstallPrompt } from "@/components/wtf/install-app";
 import { useSession } from "@/hooks/use-session";
 import { BUILD_COMMIT, BUILD_TIME, REPO_COMMIT_URL } from "@/lib/build-info";
@@ -33,6 +34,10 @@ export function AppShell({
   // One sheet for both cameras. Two would mean two hidden file inputs, and the
   // photograph landing in whichever one the browser happened to reach first.
   const [capturing, setCapturing] = useState(false);
+  // Latches on the first open and never goes back, so dismissing the sheet does
+  // not unmount the chunk it took a tap to fetch.
+  const opened = useRef(false);
+  if (capturing) opened.current = true;
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   // No "Suggest" tab. The camera is the way to report something, and a second
@@ -89,7 +94,13 @@ export function AppShell({
       )}
       <header
         className={cn(
-          "sticky top-0 z-30 border-b border-border bg-background/70 backdrop-blur-xl",
+          // Solid, not translucent-and-blurred. A backdrop filter on a bar that
+          // stays on screen while the page scrolls re-reads everything moving
+          // behind it on every frame, and on a phone that is the single most
+          // expensive thing in the layout. Against this app's own dark ground
+          // the difference is barely visible; md:supports-[backdrop-filter]
+          // keeps it where there is a desktop GPU to pay for it.
+          "sticky top-0 z-30 border-b border-border bg-background md:bg-background/70 md:backdrop-blur-xl",
           // The iOS app and an iPhone home-screen install both run full-bleed
           // under the status bar, so without this the logo row sits beneath the
           // clock. The blur extends up behind it rather than leaving a band.
@@ -175,7 +186,9 @@ export function AppShell({
 
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur-xl md:hidden"
+        // Same again, and this one matters more: the bottom bar is on screen
+        // for every frame of every feed swipe.
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background md:hidden"
       >
         <ul className="flex items-stretch pb-[env(safe-area-inset-bottom)]">
           {tabs.map((item, index) => {
@@ -212,7 +225,10 @@ export function AppShell({
         </ul>
       </nav>
 
-      <Capture open={capturing} onOpenChange={setCapturing} />
+      {/* Mounted on the first tap, not at startup, so its chunk is fetched then
+          too. It stays mounted afterwards: a sheet that re-fetches every time
+          you dismiss it would be worse than one moment's wait, once. */}
+      {opened.current ? <Capture open={capturing} onOpenChange={setCapturing} /> : null}
 
       {/* Asks once, late, and takes no for an answer. Mounted in the shell so it
           reaches every page rather than only the one that used to carry a card. */}

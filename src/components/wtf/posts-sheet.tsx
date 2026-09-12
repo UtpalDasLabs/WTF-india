@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
-import { Capture } from "@/components/wtf/capture";
+import { Capture } from "@/components/wtf/capture-lazy";
 import { deviceId, useDeviceId } from "@/hooks/use-device-id";
 import {
   addNote,

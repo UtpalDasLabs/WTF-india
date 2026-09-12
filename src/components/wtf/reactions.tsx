@@ -105,16 +105,21 @@ export function Reactions({
             >
               <span
                 aria-hidden
+                // No backdrop blur, for the same reason as the rest of the card:
+                // four of these ride on every feed card, and a backdrop filter
+                // is a composited surface that re-reads what is behind it on
+                // every frame of a swipe. Over a dark photo under a dark scrim
+                // it was doing nothing a heavier background cannot do.
                 className={cn(
-                  "grid size-11 place-items-center rounded-full text-2xl leading-none backdrop-blur-sm transition-all active:scale-90",
-                  on ? "bg-white/85 scale-105" : "bg-black/35",
+                  "grid size-11 place-items-center rounded-full text-2xl leading-none transition-all active:scale-90",
+                  on ? "bg-white/85 scale-105" : "bg-black/45",
                 )}
               >
                 {glyph}
               </span>
               <span
                 data-numeric
-                className="text-[11px] font-semibold tabular-nums text-white drop-shadow"
+                className="text-shadow-ink text-[11px] font-semibold tabular-nums text-white"
               >
                 {total > 0 ? total : ""}
               </span>

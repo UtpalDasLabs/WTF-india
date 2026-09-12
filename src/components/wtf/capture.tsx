@@ -537,18 +537,3 @@ export function Capture({
  * because the masthead and the tab bar both carry one of these and two mounted
  * sheets means two hidden file inputs fighting over the same photograph.
  */
-export function CameraButton({ onClick, className }: { onClick: () => void; className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="Add a photo of a project near you"
-      className={cn(
-        "m3-state grid size-12 place-items-center rounded-full bg-foreground text-background shadow-lg transition-transform active:scale-95",
-        className,
-      )}
-    >
-      <Camera className="size-5" aria-hidden />
-    </button>
-  );
-}

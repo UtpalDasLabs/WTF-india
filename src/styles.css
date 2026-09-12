@@ -306,6 +306,16 @@
   border-color: var(--color-border);
 }
 
+/* Keeps small white text legible over a photograph.
+ *
+ * A text shadow rather than a drop-shadow filter: the filter would promote
+ * every label that used it to its own composited layer, and there are seven of
+ * them on every card of a feed that never unmounts what you have scrolled past.
+ */
+@utility text-shadow-ink {
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.55);
+}
+
 /* Material-style state layer for interactive surfaces */
 @utility m3-state {
   position: relative;
