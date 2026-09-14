@@ -38,19 +38,27 @@ declare global {
     // Internet Explorer put its opt-out here rather than on navigator, and
     // enough browsers copied it that it is still worth asking.
     doNotTrack?: string | null;
+    wtfAnalytics?: () => Record<string, unknown>;
   }
 }
 
-function tracks(): boolean {
-  if (!MEASUREMENT_ID) return false;
-  if (typeof window === "undefined") return false;
+/** Why nothing is being reported, or null when it is. */
+type Silent = "no-measurement-id" | "development" | "do-not-track" | "no-window" | null;
+
+function silentBecause(): Silent {
+  if (typeof window === "undefined") return "no-window";
+  if (!MEASUREMENT_ID) return "no-measurement-id";
   // A dev server's traffic is not traffic.
-  if (import.meta.env.DEV) return false;
+  if (import.meta.env.DEV) return "development";
   // Somebody who has asked not to be counted is not counted. It costs three
   // lines and this app is about what institutions do to people, not the
   // reverse.
-  if (navigator.doNotTrack === "1" || window.doNotTrack === "1") return false;
-  return true;
+  if (navigator.doNotTrack === "1" || window.doNotTrack === "1") return "do-not-track";
+  return null;
+}
+
+function tracks(): boolean {
+  return silentBecause() === null;
 }
 
 let installed = false;
@@ -138,4 +146,30 @@ export function track(event: string, params?: Record<string, string | number | b
   if (!tracks()) return;
   install();
   window.gtag?.("event", event, params);
+}
+
+/**
+ * Why the dashboard is empty, answerable from the browser it is empty in.
+ *
+ * Analytics fails silently by design: the app works perfectly and the reports
+ * are simply blank, and every likely cause — a blocked tag, Do Not Track, a
+ * build with no id in it — looks identical from the outside. So the app says
+ * which one it is. In the console of the running app:
+ *
+ *   wtfAnalytics()
+ *
+ * `silent` is the reason nothing is sent, `queued` counts what has been handed
+ * to the tag, and `tagRequested` says whether the script was asked for at all —
+ * if that is true and the reports are still empty, something between the
+ * browser and Google is dropping it, which is usually an extension.
+ */
+if (typeof window !== "undefined") {
+  window.wtfAnalytics = () => ({
+    measurementId: MEASUREMENT_ID || null,
+    reporting: tracks(),
+    silent: silentBecause(),
+    doNotTrack: navigator.doNotTrack ?? window.doNotTrack ?? null,
+    tagRequested: installed,
+    queued: window.dataLayer?.length ?? 0,
+  });
 }
