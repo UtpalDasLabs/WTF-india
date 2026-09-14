@@ -39,6 +39,7 @@ declare global {
     // enough browsers copied it that it is still worth asking.
     doNotTrack?: string | null;
     wtfAnalytics?: () => Record<string, unknown>;
+    google_tag_manager?: unknown;
   }
 }
 
@@ -159,9 +160,10 @@ export function track(event: string, params?: Record<string, string | number | b
  *   wtfAnalytics()
  *
  * `silent` is the reason nothing is sent, `queued` counts what has been handed
- * to the tag, and `tagRequested` says whether the script was asked for at all —
- * if that is true and the reports are still empty, something between the
- * browser and Google is dropping it, which is usually an extension.
+ * to the tag, `tagRequested` says whether the script was asked for, and
+ * `tagRunning` whether Google's code actually arrived and took over — that last
+ * one is the difference between "we asked and nothing came" and "we asked, it
+ * came, and the hits are being dropped somewhere after that".
  */
 if (typeof window !== "undefined") {
   window.wtfAnalytics = () => ({
@@ -170,6 +172,10 @@ if (typeof window !== "undefined") {
     silent: silentBecause(),
     doNotTrack: navigator.doNotTrack ?? window.doNotTrack ?? null,
     tagRequested: installed,
+    // gtag.js creates this the moment it runs. Asking for the script and the
+    // script executing are different things, and only the second one means the
+    // queue is being drained.
+    tagRunning: typeof window.google_tag_manager !== "undefined",
     queued: window.dataLayer?.length ?? 0,
   });
 }
