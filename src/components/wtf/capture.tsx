@@ -7,6 +7,7 @@ import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { deviceId } from "@/hooks/use-device-id";
+import { track } from "@/lib/analytics";
 import { readPhotoMeta, stripAndResize } from "@/lib/photo";
 import {
   createCommunitySpot,
@@ -309,6 +310,7 @@ export function Capture({
       // most likely to want to take back was the one thing they could not.
       // The server list is the real answer; this is the head start.
       rememberMyPost(postId);
+      track("post_created", { kind: "photo", new_project: needsName });
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["posts", target] }),

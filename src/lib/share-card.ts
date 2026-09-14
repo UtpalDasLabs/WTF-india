@@ -1,3 +1,4 @@
+import { track } from "@/lib/analytics";
 import { computeDelay } from "@/lib/delay";
 import type { Project } from "@/lib/queries";
 import { projectUrl } from "@/lib/base-path";
@@ -281,6 +282,7 @@ export async function shareProjectCard(
 
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     await navigator.share({ title: input.project.name, text: line, url });
+    track("share", { via: "share_sheet" });
     return "shared";
   }
 
@@ -288,6 +290,7 @@ export async function shareProjectCard(
   const message = `${line}\n${url}`;
   try {
     await navigator.clipboard.writeText(message);
+    track("share", { via: "clipboard" });
     return "copied";
   } catch {
     // Clipboard refused (an insecure origin, or permission denied). The card is
@@ -299,6 +302,7 @@ export async function shareProjectCard(
     link.download = `${input.project.id}-wtf.png`;
     link.click();
     URL.revokeObjectURL(objectUrl);
+    track("share", { via: "image" });
     return "downloaded";
   }
 }

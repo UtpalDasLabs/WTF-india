@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { deviceId } from "@/hooks/use-device-id";
 import { useReacted } from "@/hooks/use-reacted";
+import { track } from "@/lib/analytics";
 import { toggleReaction, type Reaction, type ReactionCounts } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +65,9 @@ export function Reactions({
       const on = mine.has(key);
 
       mine.set(key, !on);
+      // Which faces people actually press, and whether they press them at all.
+      // The project id is deliberately not sent: how many, not who or where.
+      track("reaction", { reaction, on: !on, via: "rail" });
       setPending((current) => ({
         ...current,
         [reaction]: (current[reaction] ?? 0) + (on ? -1 : 1),

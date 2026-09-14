@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { deviceId } from "@/hooks/use-device-id";
+import { track } from "@/lib/analytics";
 import { hasReacted, setReacted } from "@/hooks/use-reacted";
 import { toggleReaction, type Reaction } from "@/lib/queries";
 
@@ -72,6 +73,7 @@ export function useDoubleTapReaction(
       // Shared with the rail of faces, so the one you just gave lights up there
       // too rather than staying dark until the next mount.
       setReacted(key, true);
+      track("reaction", { reaction, on: true, via: "double_tap" });
       void toggleReaction(projectId, reaction, device)
         .then(() => onReacted?.())
         .catch(() => {

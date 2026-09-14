@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 import { deviceId } from "@/hooks/use-device-id";
+import { track } from "@/lib/analytics";
 import { myFollows, toggleFollow } from "@/lib/queries";
 
 /**
@@ -141,6 +142,7 @@ export function useFollow() {
     const current = snapshot;
     const following = current.includes(id);
     write(following ? current.filter((item) => item !== id) : [...current, id]);
+    track("follow", { following: !following });
 
     const device = deviceId();
     if (!device) return;

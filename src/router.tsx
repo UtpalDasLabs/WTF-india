@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { pageView } from "./lib/analytics";
 import { BASE_PATH } from "./lib/base-path";
 
 export const getRouter = () => {
@@ -32,6 +33,19 @@ export const getRouter = () => {
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
   });
+
+  // Every screen after the first, which a single-page app would otherwise never
+  // report: the document loads once and Google's own page_view fires with it.
+  //
+  // onRendered rather than onResolved, because the title is set by the route
+  // that has just been rendered and reading it any earlier reports the previous
+  // screen's. Nothing is subscribed during prerender, where there is no reader
+  // and no window.
+  if (typeof window !== "undefined") {
+    router.subscribe("onRendered", ({ toLocation }) => {
+      pageView(toLocation.pathname);
+    });
+  }
 
   return router;
 };
