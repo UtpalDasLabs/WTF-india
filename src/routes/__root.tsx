@@ -92,6 +92,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // paints its own chrome — and the one iOS uses behind a home-screen
       // launch. Left on the old indigo it was a bright band above a dark app.
       { name: "theme-color", content: "#101219" },
+      // Both spellings: Chrome deprecated the apple- prefixed one and warns in
+      // the console, while iOS still reads only that one.
+      { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "We the Future" },
       // Full-bleed under the status bar, matching the native iOS build, which

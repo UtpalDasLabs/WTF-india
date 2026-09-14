@@ -1,0 +1,24 @@
+-- reviews_public was the one public view that ran as the caller.
+--
+-- Anonymous readers have SELECT on the view and, correctly, none on the
+-- `reviews` table underneath it — that is the whole point of the view, which
+-- shows masked_body rather than body and nulls author_name on an anonymous
+-- review. With security_invoker=true the view ran with the reader's own rights,
+-- so the permission denial on `reviews` came straight through it. PostgREST
+-- turns a permission error on an unauthenticated request into 401 rather than
+-- 403, to prompt for credentials — which is the 401 the landing page had been
+-- getting for every star rating, on every visit, since the view was created.
+--
+-- It failed quietly: the query throws, React Query swallows it, and the app
+-- simply shows no ratings. Nothing looked broken unless you opened the console.
+--
+-- Its six siblings — project_posts_public, community_notes_public, the three
+-- count views and review_images_public — are all security_invoker=off. This
+-- makes the odd one out match them.
+--
+-- What anonymous readers can see does not change. It is still decided by the
+-- view's own WHERE clause: visible moderation state, published project, masked
+-- body, and no name on a review left anonymously. Verified after applying:
+-- anon reads seven rows through the view, none hidden, none naming an anonymous
+-- author, and still cannot read public.reviews itself.
+ALTER VIEW public.reviews_public SET (security_invoker = false);
